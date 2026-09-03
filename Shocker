@@ -1,0 +1,79 @@
+local TweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local success, loadedObjects = pcall(function()
+	return game:GetObjects("rbxassetid://11547803978")
+end)
+
+if not success or not loadedObjects or #loadedObjects == 0 then
+	return
+end
+
+local model = loadedObjects[1]
+model.Parent = workspace
+
+local mainPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+model.PrimaryPart = mainPart
+
+for _, part in ipairs(model:GetDescendants()) do
+	if part:IsA("BasePart") then
+		part.Anchored = true
+	end
+end
+
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+local spawnPos = hrp.CFrame * CFrame.new(0, 0, -12)
+model:SetPrimaryPartCFrame(CFrame.new(spawnPos.Position, hrp.Position))
+
+local light = model:FindFirstChild("Light", true)
+if light then
+	light.Range = 0
+	TweenService:Create(light, TweenInfo.new(1), {Range = 21}):Play()
+end
+
+local function makeEntityFall()
+	if mainPart then
+		local targetCFrame = mainPart.CFrame * CFrame.Angles(math.rad(-90), 0, 0) - Vector3.new(0, 3, 0)
+		TweenService:Create(mainPart, TweenInfo.new(0.5, Enum.EasingStyle.Back), {CFrame = targetCFrame}):Play()
+	end
+end
+
+task.spawn(function()
+	local DURATION = 3
+	local startTime = os.clock()
+	local lookedAway = false
+
+	while (os.clock() - startTime) < DURATION do
+		task.wait(0.1)
+
+		local _, onScreen = camera:WorldToViewportPoint(mainPart.Position)
+
+		if not onScreen then
+			lookedAway = true
+			break
+		end
+	end
+
+	if lookedAway then
+		makeEntityFall()
+		task.wait(1)
+		model:Destroy()
+	else
+		local hum = char:FindFirstChild("Humanoid")
+		
+		local attackTween = TweenService:Create(mainPart, TweenInfo.new(0.2), {CFrame = hrp.CFrame})
+		attackTween:Play()
+		attackTween.Completed:Wait()
+
+		if hum then
+			hum:TakeDamage(hum.MaxHealth * 0.10)
+		end
+
+		makeEntityFall()
+		task.wait(1)
+		model:Destroy()
+	end
+end)
