@@ -1,0 +1,268 @@
+--// OLD SEEK MODEL LOADER
+--// Custom Seek Model: 11664451634
+
+local Workspace = game:GetService("Workspace")
+local TextChatService = game:GetService("TextChatService")
+local StarterGui = game:GetService("StarterGui")
+
+local MODEL_ID = "rbxassetid://11664451634"
+
+------------------------------------------------------------
+-- GET ROOT PART
+------------------------------------------------------------
+
+local function getRoot(object)
+	if not object then
+		return nil
+	end
+
+	if object:IsA("BasePart") then
+		return object
+	end
+
+	if object:IsA("Model") then
+		return object.PrimaryPart
+			or object:FindFirstChild("HumanoidRootPart", true)
+			or object:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	return nil
+end
+
+------------------------------------------------------------
+-- HIDE ORIGINAL OBJECT
+------------------------------------------------------------
+
+local function hideObject(object)
+	if object:IsA("BasePart") then
+		object.Transparency = 1
+	end
+
+	for _, obj in ipairs(object:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Transparency = 1
+		end
+	end
+end
+
+------------------------------------------------------------
+-- PREPARE CUSTOM MODEL
+------------------------------------------------------------
+
+local function prepareModel(model)
+	for _, obj in ipairs(model:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Anchored = true
+			obj.CanCollide = false
+			obj.CanTouch = false
+			obj.CanQuery = false
+		end
+	end
+end
+
+------------------------------------------------------------
+-- LOAD CUSTOM SEEK
+------------------------------------------------------------
+
+local function loadCustomModel(seek)
+	local success, objects = pcall(function()
+		return game:GetObjects(MODEL_ID)
+	end)
+
+	if not success then
+		warn("[Seek Model Loader] Failed to load model.")
+		return nil
+	end
+
+	if not objects or not objects[1] then
+		warn("[Seek Model Loader] Model was not found.")
+		return nil
+	end
+
+	local model = objects[1]
+
+	model.Name = "OldSeekCustomModel"
+	model.Parent = seek
+
+	prepareModel(model)
+
+	return model
+end
+
+------------------------------------------------------------
+-- SETUP SEEK
+------------------------------------------------------------
+
+local function setupSeek(seek)
+
+	if not seek then
+		return
+	end
+
+	if seek.Name ~= "SeekMoving"
+		and seek.Name ~= "SeekMovingNewClone" then
+		return
+	end
+
+	task.spawn(function()
+
+		--------------------------------------------------------
+		-- WAIT FOR SEEK
+		--------------------------------------------------------
+
+		local SeekRig = seek:WaitForChild("SeekRig", 10)
+		local Figure = seek:WaitForChild("Figure", 10)
+
+		if not SeekRig or not Figure then
+			warn("[Seek Model Loader] Seek components not found.")
+			return
+		end
+
+		task.wait(0.5)
+
+		--------------------------------------------------------
+		-- HIDE SEEK RIG
+		--------------------------------------------------------
+
+		for _, obj in ipairs(SeekRig:GetDescendants()) do
+
+			if obj:IsA("BasePart") then
+				obj.Transparency = 1
+			end
+
+			if obj.Name == "StringCheese" then
+				obj:Destroy()
+			end
+
+		end
+
+		--------------------------------------------------------
+		-- HIDE ORIGINAL FIGURE
+		--------------------------------------------------------
+
+		hideObject(Figure)
+
+		--------------------------------------------------------
+		-- REMOVE OLD CUSTOM MODEL
+		--------------------------------------------------------
+
+		local oldModel = seek:FindFirstChild("OldSeekCustomModel")
+
+		if oldModel then
+			oldModel:Destroy()
+		end
+
+		--------------------------------------------------------
+		-- LOAD NEW MODEL
+		--------------------------------------------------------
+
+		local CustomModel = loadCustomModel(seek)
+
+		if not CustomModel then
+			return
+		end
+
+		--------------------------------------------------------
+		-- POSITION MODEL
+		--------------------------------------------------------
+
+		local FigureRoot = getRoot(Figure)
+
+		if FigureRoot and CustomModel:IsA("Model") then
+			CustomModel:PivotTo(FigureRoot.CFrame)
+		end
+
+		--------------------------------------------------------
+		-- FOLLOW ORIGINAL SEEK MOVEMENT
+		--------------------------------------------------------
+
+		task.spawn(function()
+
+			while CustomModel
+				and CustomModel.Parent
+				and seek.Parent
+				and Figure
+				and Figure.Parent do
+
+				local CurrentFigureRoot = getRoot(Figure)
+
+				if CurrentFigureRoot
+					and CustomModel:IsA("Model") then
+
+					CustomModel:PivotTo(
+						CurrentFigureRoot.CFrame
+					)
+
+				end
+
+				task.wait()
+
+			end
+
+		end)
+
+	end)
+
+end
+
+------------------------------------------------------------
+-- EXISTING SEEK
+------------------------------------------------------------
+
+for _, seek in ipairs(Workspace:GetChildren()) do
+	setupSeek(seek)
+end
+
+------------------------------------------------------------
+-- NEW SEEK
+------------------------------------------------------------
+
+Workspace.ChildAdded:Connect(function(seek)
+	setupSeek(seek)
+end)
+
+------------------------------------------------------------
+-- CHAT MESSAGE
+------------------------------------------------------------
+
+task.spawn(function()
+
+	task.wait(1)
+
+	pcall(function()
+
+		if TextChatService.ChatVersion
+			== Enum.ChatVersion.TextChatService then
+
+			local TextChannels =
+				TextChatService:WaitForChild("TextChannels", 5)
+
+			if TextChannels then
+
+				local General =
+					TextChannels:FindFirstChild("RBXGeneral")
+
+				if General then
+					General:DisplaySystemMessage(
+						"seek model loader"
+					)
+				end
+
+			end
+
+		else
+
+			StarterGui:SetCore(
+				"ChatMakeSystemMessage",
+				{
+					Text = "seek model loader";
+					Font = Enum.Font.SourceSansBold;
+					TextSize = 18;
+				}
+			)
+
+		end
+
+	end)
+
+end)
