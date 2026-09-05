@@ -1,0 +1,632 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local Plr = Players.LocalPlayer
+local Parent = Plr:WaitForChild("PlayerGui")
+
+--==================================================
+-- SETTINGS
+--==================================================
+
+local stamina = 100
+local staminaMax = 100
+
+local sprintTime = 7
+sprintTime = math.max(sprintTime - 1, 1)
+
+local cooldown = false
+local isSprinting = false
+
+local NORMAL_SPEED = 12
+local SPRINT_SPEED = 20
+local CROUCH_SPEED = 8
+local CHASE_SPEED = 22
+local CHASE_CROUCH_SPEED = 15
+
+local SPEED_BOOST = 4
+
+--==================================================
+-- CHARACTER
+--==================================================
+
+local Char = Plr.Character or Plr.CharacterAdded:Wait()
+local Hum = Char:WaitForChild("Humanoid")
+
+local function updateCharacter()
+	Char = Plr.Character or Plr.CharacterAdded:Wait()
+	Hum = Char:WaitForChild("Humanoid")
+	Hum:SetAttribute("SpeedBoost", 0)
+	Hum.WalkSpeed = NORMAL_SPEED
+end
+
+Plr.CharacterAdded:Connect(function(character)
+	Char = character
+	Hum = character:WaitForChild("Humanoid")
+
+	stamina = staminaMax
+	cooldown = false
+	isSprinting = false
+
+	Hum:SetAttribute("SpeedBoost", 0)
+	Hum.WalkSpeed = NORMAL_SPEED
+end)
+
+--==================================================
+-- MAIN GAME
+--==================================================
+
+local MainGame
+
+pcall(function()
+	MainGame = require(
+		Plr.PlayerGui.MainUI.Initiator.Main_Game
+	)
+end)
+
+--==================================================
+-- STAMINA GUI
+--==================================================
+
+local oldGui = Parent:FindFirstChild("StaminaGui")
+if oldGui then
+	oldGui:Destroy()
+end
+
+local StaminaGui = Instance.new("ScreenGui")
+StaminaGui.Name = "StaminaGui"
+StaminaGui.Parent = Parent
+StaminaGui.Enabled = true
+StaminaGui.ResetOnSpawn = false
+StaminaGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local Sprint = Instance.new("Frame")
+Sprint.Name = "Sprint"
+Sprint.Parent = StaminaGui
+Sprint.AnchorPoint = Vector2.new(0, 1)
+Sprint.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Sprint.BackgroundTransparency = 1
+Sprint.Position = UDim2.new(
+	0.931555569,
+	0,
+	0.987179458,
+	0
+)
+Sprint.Size = UDim2.new(
+	0.0556001104,
+	0,
+	0.0756410286,
+	0
+)
+Sprint.SizeConstraint = Enum.SizeConstraint.RelativeYY
+Sprint.ZIndex = 1005
+
+local HiddenImage = Instance.new("ImageLabel")
+HiddenImage.Parent = Sprint
+HiddenImage.BackgroundColor3 = Color3.fromRGB(255, 222, 189)
+HiddenImage.Size = UDim2.new(1, 0, 1, 0)
+HiddenImage.SizeConstraint = Enum.SizeConstraint.RelativeYY
+HiddenImage.Visible = false
+
+local HiddenCorner = Instance.new("UICorner")
+HiddenCorner.CornerRadius = UDim.new(1, 0)
+HiddenCorner.Parent = HiddenImage
+
+local UIPadding = Instance.new("UIPadding")
+UIPadding.Parent = Sprint
+UIPadding.PaddingBottom = UDim.new(0.300000012, -5)
+UIPadding.PaddingLeft = UDim.new(0.0199999996, 0)
+UIPadding.PaddingRight = UDim.new(0.0500000007, -15)
+UIPadding.PaddingTop = UDim.new(0.300000012, -5)
+
+--==================================================
+-- STAMINA BAR
+--==================================================
+
+local Bar = Instance.new("Frame")
+Bar.Name = "Bar"
+Bar.Parent = Sprint
+Bar.AnchorPoint = Vector2.new(0, 0.5)
+Bar.BackgroundColor3 = Color3.fromRGB(56, 46, 39)
+Bar.BackgroundTransparency = 0.7
+Bar.Position = UDim2.new(
+	-2.72600269,
+	0,
+	0.499999672,
+	0
+)
+Bar.Size = UDim2.new(
+	3.60599804,
+	0,
+	0.600000083,
+	0
+)
+Bar.ZIndex = 0
+
+local BarCorner = Instance.new("UICorner")
+BarCorner.CornerRadius = UDim.new(0.25, 0)
+BarCorner.Parent = Bar
+
+local BarPadding = Instance.new("UIPadding")
+BarPadding.Parent = Bar
+BarPadding.PaddingBottom = UDim.new(0, 4)
+BarPadding.PaddingLeft = UDim.new(0, 4)
+BarPadding.PaddingRight = UDim.new(0, 4)
+BarPadding.PaddingTop = UDim.new(0, 4)
+
+local Fill = Instance.new("Frame")
+Fill.Name = "Fill"
+Fill.Parent = Bar
+Fill.AnchorPoint = Vector2.new(0, 0.5)
+Fill.BackgroundColor3 = Color3.fromRGB(213, 185, 158)
+Fill.Position = UDim2.new(0, 0, 0.5, 0)
+Fill.Size = UDim2.new(1, 0, 1, 0)
+Fill.ZIndex = 2
+
+local FillCorner = Instance.new("UICorner")
+FillCorner.CornerRadius = UDim.new(0.25, 0)
+FillCorner.Parent = Fill
+
+--==================================================
+-- BLACK EFFECT
+--==================================================
+
+local oldEffect = Parent:FindFirstChild("erm")
+if oldEffect then
+	oldEffect:Destroy()
+end
+
+local erm = Instance.new("ScreenGui")
+erm.Name = "erm"
+erm.Parent = Parent
+erm.IgnoreGuiInset = true
+erm.ResetOnSpawn = false
+erm.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local BlackImage = Instance.new("ImageLabel")
+BlackImage.Parent = erm
+BlackImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+BlackImage.BackgroundTransparency = 1
+BlackImage.Size = UDim2.new(
+	1,
+	0,
+	0.998717964,
+	0
+)
+BlackImage.Image = "rbxassetid://190596490"
+BlackImage.ImageColor3 = Color3.fromRGB(0, 0, 0)
+BlackImage.ImageTransparency = 1
+
+--==================================================
+-- MOBILE BUTTON
+--==================================================
+
+local oldControls = Parent:FindFirstChild("MobileSprint")
+if oldControls then
+	oldControls:Destroy()
+end
+
+local MobileGui = Instance.new("ScreenGui")
+MobileGui.Name = "MobileSprint"
+MobileGui.Parent = Parent
+MobileGui.ResetOnSpawn = false
+MobileGui.IgnoreGuiInset = true
+MobileGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MobileButton = Instance.new("ImageButton")
+MobileButton.Name = "SprintButton"
+MobileButton.Parent = MobileGui
+
+-- Vị trí từ script thứ 2
+MobileButton.Position = UDim2.new(
+	1,
+	-115,
+	1,
+	-190
+)
+
+MobileButton.Size = UDim2.fromOffset(85, 85)
+MobileButton.BackgroundTransparency = 1
+MobileButton.BorderSizePixel = 0
+MobileButton.AutoButtonColor = false
+MobileButton.Image = "rbxassetid://72249755532768"
+MobileButton.ZIndex = 1010
+
+MobileButton.Visible = UIS.TouchEnabled
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(1, 0)
+ButtonCorner.Parent = MobileButton
+
+local ButtonStroke = Instance.new("UIStroke")
+ButtonStroke.Color = Color3.fromRGB(255, 255, 255)
+ButtonStroke.Thickness = 1
+ButtonStroke.Transparency = 0.35
+ButtonStroke.Parent = MobileButton
+
+--==================================================
+-- UPDATE STAMINA BAR
+--==================================================
+
+local function updateStaminaBar()
+	local percent = math.clamp(
+		stamina / staminaMax,
+		0,
+		1
+	)
+
+	Fill.Size = UDim2.new(
+		percent,
+		1,
+		1,
+		0
+	)
+end
+
+--==================================================
+-- SPEED SYSTEM
+--==================================================
+
+local function updateSpeed()
+	if not Hum or Hum.Health <= 0 then
+		return
+	end
+
+	if not MainGame then
+		Hum.WalkSpeed = isSprinting and SPRINT_SPEED or NORMAL_SPEED
+		return
+	end
+
+	if MainGame.chase then
+
+		if MainGame.crouching then
+			Hum.WalkSpeed = CHASE_CROUCH_SPEED
+		else
+			Hum.WalkSpeed = CHASE_SPEED
+		end
+
+	elseif MainGame.crouching then
+
+		Hum.WalkSpeed = CROUCH_SPEED
+
+	elseif isSprinting then
+
+		-- QUAN TRỌNG:
+		-- Sprint sẽ được set 20 ngay lập tức
+		Hum.WalkSpeed = SPRINT_SPEED
+
+	else
+
+		Hum.WalkSpeed = NORMAL_SPEED
+	end
+end
+
+--==================================================
+-- HOOK WALKSPEED
+--==================================================
+
+if hookmetamethod and newcclosure then
+
+	local oldNewIndex
+
+	oldNewIndex = hookmetamethod(
+		game,
+		"__newindex",
+		newcclosure(function(t, k, v)
+
+			if t == Hum and k == "WalkSpeed" then
+
+				if MainGame then
+
+					if MainGame.chase then
+
+						v = MainGame.crouching
+							and CHASE_CROUCH_SPEED
+							or CHASE_SPEED
+
+					elseif MainGame.crouching then
+
+						v = CROUCH_SPEED
+
+					elseif isSprinting then
+
+						v = SPRINT_SPEED
+
+					else
+
+						v = NORMAL_SPEED
+					end
+
+				else
+
+					v = isSprinting
+						and SPRINT_SPEED
+						or NORMAL_SPEED
+				end
+			end
+
+			return oldNewIndex(t, k, v)
+		end)
+	)
+
+end
+
+--==================================================
+-- START SPRINT
+--==================================================
+
+local function startSprint()
+
+	if cooldown then
+		return
+	end
+
+	if not Hum or Hum.Health <= 0 then
+		return
+	end
+
+	if stamina <= 0 then
+		return
+	end
+
+	if MainGame and MainGame.crouching then
+		return
+	end
+
+	if isSprinting then
+		return
+	end
+
+	isSprinting = true
+
+	-- SpeedBoost gốc
+	Hum:SetAttribute(
+		"SpeedBoost",
+		SPEED_BOOST
+	)
+
+	-- FIX:
+	-- set WalkSpeed ngay khi bấm
+	updateSpeed()
+
+	TweenService:Create(
+		BlackImage,
+		TweenInfo.new(12),
+		{
+			ImageTransparency = 0
+		}
+	):Play()
+end
+
+--==================================================
+-- STOP SPRINT
+--==================================================
+
+local function stopSprint()
+
+	if not isSprinting then
+		return
+	end
+
+	isSprinting = false
+
+	Hum:SetAttribute(
+		"SpeedBoost",
+		0
+	)
+
+	updateSpeed()
+
+	TweenService:Create(
+		BlackImage,
+		TweenInfo.new(1),
+		{
+			ImageTransparency = 1
+		}
+	):Play()
+end
+
+--==================================================
+-- PC Q TOGGLE
+--==================================================
+
+UIS.InputBegan:Connect(function(input, processed)
+
+	if processed then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.Q then
+
+		if isSprinting then
+			stopSprint()
+		else
+			startSprint()
+		end
+
+	end
+end)
+
+--==================================================
+-- MOBILE TOGGLE
+--==================================================
+
+MobileButton.MouseButton1Click:Connect(function()
+
+	if cooldown then
+		return
+	end
+
+	if stamina <= 0 then
+		return
+	end
+
+	if isSprinting then
+
+		-- Bấm lần 2 = tắt
+		stopSprint()
+
+	else
+
+		-- Bấm lần 1 = chạy
+		startSprint()
+
+	end
+end)
+
+--==================================================
+-- STAMINA LOOP
+--==================================================
+
+local staminaLoop = 0
+
+RunService.Heartbeat:Connect(function(deltaTime)
+
+	if not Hum or Hum.Health <= 0 then
+		return
+	end
+
+	--==============================================
+	-- SPRINT
+	--==============================================
+
+	if isSprinting then
+
+		staminaLoop += deltaTime
+
+		-- Giữ đúng tốc độ drain của script gốc:
+		-- 100 stamina trong sprintTime giây
+		local drainPerSecond =
+			staminaMax / sprintTime
+
+		stamina -= drainPerSecond * deltaTime
+
+		if stamina <= 0 then
+
+			stamina = 0
+
+			stopSprint()
+
+			cooldown = true
+
+			-- Caption
+			pcall(function()
+
+				firesignal(
+					game.ReplicatedStorage.Bricks.Caption.OnClientEvent,
+					"You're exhausted."
+				)
+
+			end)
+
+			-- Exhaust sound
+			pcall(function()
+
+				local sound = Instance.new("Sound")
+				sound.SoundId =
+					"rbxassetid://8258601891"
+				sound.Volume = 0.8
+				sound.PlayOnRemove = true
+				sound.Parent = workspace
+				sound:Destroy()
+
+			end)
+
+			-- Black effect
+			TweenService:Create(
+				BlackImage,
+				TweenInfo.new(0.3),
+				{
+					ImageTransparency = 0
+				}
+			):Play()
+
+			task.wait(0.3)
+
+			TweenService:Create(
+				BlackImage,
+				TweenInfo.new(10),
+				{
+					ImageTransparency = 1
+				}
+			):Play()
+
+			--==========================================
+			-- FULL RECOVERY
+			--==========================================
+
+			for i = 1, staminaMax do
+
+				stamina = i
+
+				updateStaminaBar()
+
+				task.wait(
+					sprintTime / 50
+				)
+
+			end
+
+			cooldown = false
+		end
+
+	--==============================================
+	-- REGEN
+	--==============================================
+
+	else
+
+		if not cooldown and stamina < staminaMax then
+
+			stamina = math.min(
+				stamina + 1,
+				staminaMax
+			)
+
+			updateStaminaBar()
+
+			task.wait(
+				sprintTime / 50
+			)
+		end
+	end
+
+	stamina = math.clamp(
+		stamina,
+		0,
+		staminaMax
+	)
+
+	updateStaminaBar()
+
+end)
+
+--==================================================
+-- MAIN GAME SPEED UPDATE
+--==================================================
+
+task.spawn(function()
+
+	while task.wait(0.1) do
+
+		if Hum and Hum.Health > 0 then
+			updateSpeed()
+		end
+
+	end
+
+end)
+
+--==================================================
+-- INITIAL
+--==================================================
+
+Hum:SetAttribute(
+	"SpeedBoost",
+	0
+)
+
+Hum.WalkSpeed = NORMAL_SPEED
+
+updateStaminaBar()
