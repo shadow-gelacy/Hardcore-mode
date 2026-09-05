@@ -1,0 +1,151 @@
+local spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors/Entity%20Spawner/V2/Source.lua"))()
+
+local CALLBACK_SOUND_ID = "rbxassetid://103418561127185"
+
+local SoundService = game:GetService("SoundService")
+
+local currentSound
+
+local function playSound(soundId)
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+    end
+
+    local sound = Instance.new("Sound")
+    sound.Name = "ReboundSound"
+    sound.SoundId = soundId
+    sound.Volume = 10
+    sound.PlaybackSpeed = 1
+    sound.Parent = SoundService
+
+    currentSound = sound
+    sound:Play()
+
+    sound.Ended:Connect(function()
+        if currentSound == sound then
+            currentSound = nil
+        end
+        sound:Destroy()
+    end)
+
+    return sound
+end
+
+-- Sound khi Rebound xuất hiện
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("Model") and obj.Name:lower():find("rebound") then
+        playSound(SOUND_ID)
+    end
+end)
+
+game.Lighting.MainColorCorrection.TintColor = Color3.fromRGB(0, 80, 255)
+game.Lighting.MainColorCorrection.Contrast = 1
+
+local TweenService = game:GetService("TweenService")
+
+TweenService:Create(
+    game.Lighting.MainColorCorrection,
+    TweenInfo.new(2.5),
+    {Contrast = 0}
+):Play()
+
+TweenService:Create(
+    game.Lighting.MainColorCorrection,
+    TweenInfo.new(80),
+    {TintColor = Color3.fromRGB(255,255,255)}
+):Play()
+
+local spawnCount = 0
+local maxSpawn = 5
+
+local function SpawnEntity()
+    if spawnCount >= maxSpawn then
+        return
+    end
+
+    spawnCount += 1
+
+    local entity = spawner.Create({
+        Entity = {
+            Name = "Rebound",
+            Asset = "rbxassetid://124600498030401",
+            HeightOffset = 0
+        },
+
+        Lights = {
+            Flicker = {
+                Enabled = false,
+                Duration = 1
+            },
+            Shatter = false,
+            Repair = false
+        },
+
+        CameraShake = {
+            Enabled = true
+        },
+
+        Movement = {
+            Speed = 300,
+            Delay = 6,
+            Reversed = false
+        },
+
+        Rebounding = {
+            Enabled = false
+        },
+
+        Damage = {
+            Enabled = true,
+            Range = 40,
+            Amount = 9999
+        },
+
+        Crucifixion = {
+            Enabled = false
+        },
+
+        Death = {
+            Type = "Guiding",
+            Hints = {"you die to rebound"},
+            Cause = "die to rebound"
+        }
+    })
+
+    entity:SetCallback("OnLookAt", function()
+        -- DỪNG VÀ XOÁ SOUND CŨ
+        if currentSound then
+            currentSound:Stop()
+            currentSound:Destroy()
+            currentSound = nil
+        end
+
+        -- PHÁT SOUND MỚI KHI CALLBACK
+        playSound(CALLBACK_SOUND_ID)
+
+        -- Death cause
+        local ReSt = game.ReplicatedStorage
+        local Plr = game.Players.LocalPlayer
+
+        ReSt.GameStats[
+            "Player_" .. Plr.Name
+        ].Total.DeathCause.Value = "die to rebound"
+    end)
+
+    entity:Run()
+end
+
+SpawnEntity()
+
+local LatestRoom = workspace.CurrentRooms:WaitForChild(
+    game.ReplicatedStorage.GameData.LatestRoom.Value
+)
+
+workspace.CurrentRooms.ChildAdded:Connect(function(room)
+    if spawnCount < maxSpawn then
+        task.wait(1)
+        SpawnEntity()
+    end
+end)
