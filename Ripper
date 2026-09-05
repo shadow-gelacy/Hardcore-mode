@@ -1,0 +1,455 @@
+--// RipperNotMoving - Full Fixed Version
+
+--==================================================
+-- SERVICES
+--==================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+--==================================================
+-- CONFIG
+--==================================================
+
+local CONFIG = {
+    Model = "rbxassetid://139732443027976",
+
+    Speed = 215,
+    Delay = 6.771,
+
+    DamageEnabled = true,
+    DamageRange = 100,
+    DamageAmount = 999,
+
+    -- Map destruction OFF
+    ShatterLights = false,
+    RepairLights = false,
+
+    Earthquake = true,
+    CameraShake = true,
+
+    SpawnSound = "rbxassetid://6657340839",
+    DespawnSound = "rbxassetid://1837829565",
+
+    SpawnVolume = 2,
+    DespawnVolume = 2,
+
+    -- Death message
+    DeathHint = "Hide",
+    DeathCause = "Ripper"
+}
+
+--==================================================
+-- LOAD SPAWNER
+--==================================================
+
+local SPAWNER_URL =
+    "https://raw.githubusercontent.com/eoyoustme/Extremely/refs/heads/main/Ripper%20Spawner"
+
+local Ripper
+
+local success, result = pcall(function()
+    return loadstring(game:HttpGet(SPAWNER_URL))()
+end)
+
+if not success then
+    warn("[Ripper] Failed to load spawner:")
+    warn(result)
+    return
+end
+
+Ripper = result
+
+if not Ripper then
+    warn("[Ripper] Spawner returned nil.")
+    return
+end
+
+if typeof(Ripper.Create) ~= "function" then
+    warn("[Ripper] Create function was not found.")
+    return
+end
+
+--==================================================
+-- SOUND FUNCTION
+--==================================================
+
+local function playSound(soundId, parent, volume)
+    if not parent then
+        parent = workspace
+    end
+
+    task.spawn(function()
+        local sound = Instance.new("Sound")
+
+        sound.Name = "RipperSound"
+        sound.SoundId = soundId
+        sound.Volume = volume or 1
+        sound.RollOffMaxDistance = 150
+        sound.Parent = parent
+
+        local ok = pcall(function()
+            sound:Play()
+        end)
+
+        if not ok then
+            sound:Destroy()
+            return
+        end
+
+        sound.Ended:Wait()
+
+        if sound then
+            sound:Destroy()
+        end
+    end)
+end
+
+--==================================================
+-- CREATE RIPPER
+--==================================================
+
+local createSuccess, Entity = pcall(function()
+
+    return Ripper:Create({
+
+        --==========================================
+        -- ENTITY
+        --==========================================
+
+        Entity = {
+            Name = "RipperNotMoving",
+            Asset = CONFIG.Model,
+            HeightOffset = 0
+        },
+
+        --==========================================
+        -- MOVEMENT
+        --==========================================
+
+        Movement = {
+            Speed = CONFIG.Speed,
+            Delay = CONFIG.Delay,
+            Reversed = false
+        },
+
+        --==========================================
+        -- DAMAGE
+        --==========================================
+
+        Damage = {
+            Enabled = CONFIG.DamageEnabled,
+            Range = CONFIG.DamageRange,
+            Amount = CONFIG.DamageAmount,
+            IgnoreHiding = false
+        },
+
+        --==========================================
+        -- REBOUND
+        --==========================================
+
+        Rebounding = {
+            Enabled = true,
+            Type = "Ambush",
+            Min = 2,
+            Max = 4,
+            Delay = 2
+        },
+
+        --==========================================
+        -- LIGHTS
+        --==========================================
+
+        Lights = {
+            Flicker = {
+                Enabled = true,
+                Duration = 1
+            },
+
+            -- IMPORTANT:
+            -- No shattering lights.
+            Shatter = false,
+
+            Repair = false
+        },
+
+        --==========================================
+        -- EARTHQUAKE
+        --==========================================
+
+        Earthquake = {
+            Enabled = CONFIG.Earthquake
+        },
+
+        --==========================================
+        -- CAMERA SHAKE
+        --==========================================
+
+        CameraShake = {
+            Enabled = CONFIG.CameraShake,
+
+            Values = {
+                1.5,
+                20,
+                0.1,
+                1
+            },
+
+            Range = 100
+        },
+
+        --==========================================
+        -- CRUCIFIX
+        --==========================================
+
+        Crucifixion = {
+            Type = "Curious",
+            Enabled = true,
+            Range = 40,
+            Resist = false,
+            Break = true
+        },
+
+        --==========================================
+        -- DEATH
+        --==========================================
+
+        Death = {
+            Type = "Guiding",
+
+            -- Death hint
+            Hints = {
+                CONFIG.DeathHint
+            },
+
+            -- Death cause
+            Cause = CONFIG.DeathCause
+        }
+    })
+
+end)
+
+if not createSuccess or not Entity then
+    warn("[Ripper] Failed to create entity.")
+    warn(Entity)
+    return
+end
+
+--==================================================
+-- SPAWN CALLBACK
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnSpawned", function(entityModel)
+
+        if not entityModel then
+            return
+        end
+
+        -- Spawn sound
+        playSound(
+            CONFIG.SpawnSound,
+            entityModel,
+            CONFIG.SpawnVolume
+        )
+
+        -- Red visual effect
+        pcall(function()
+
+            local old =
+                Lighting:FindFirstChild("RipperColorCorrection")
+
+            if old then
+                old:Destroy()
+            end
+
+            local effect =
+                Instance.new("ColorCorrectionEffect")
+
+            effect.Name = "RipperColorCorrection"
+            effect.TintColor =
+                Color3.fromRGB(255, 75, 75)
+
+            effect.Contrast = 0.15
+            effect.Saturation = 0.05
+            effect.Brightness = 0
+
+            effect.Parent = Lighting
+
+        end)
+
+    end)
+
+end)
+
+--==================================================
+-- ENTER ROOM
+--==================================================
+-- NOTHING HERE.
+--
+-- No:
+-- BreakJoints()
+-- Destroy()
+-- AssemblyLinearVelocity
+-- Velocity
+-- Anchoring
+-- Unanchoring
+-- Moving map objects
+-- Breaking furniture
+-- Breaking doors
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnEnterRoom", function(entityModel, room)
+
+        -- Intentionally empty.
+        -- Ripper does NOT destroy the room.
+
+    end)
+
+end)
+
+--==================================================
+-- START MOVING
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnStartMoving", function(entityModel)
+
+        -- No additional action.
+
+    end)
+
+end)
+
+--==================================================
+-- LOOK AT
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnLookAt", function(entityModel, isLooking)
+
+        -- No jumpscare.
+
+    end)
+
+end)
+
+--==================================================
+-- REBOUND
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnRebounding", function(
+        entityModel,
+        isRebounding
+    )
+
+        -- No additional effect.
+
+    end)
+
+end)
+
+--==================================================
+-- DAMAGE PLAYER
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnDamagePlayer", function(
+        entityModel,
+        newHealth
+    )
+
+        -- Damage is handled by the spawner.
+        --
+        -- Amount = 999
+        -- Cause = Ripper
+        -- Hint = Hide
+        --
+        -- No custom jumpscare.
+
+    end)
+
+end)
+
+--==================================================
+-- DESPAWNING
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnDespawning", function(entityModel)
+
+        -- Despawn sound
+        playSound(
+            CONFIG.DespawnSound,
+            workspace,
+            CONFIG.DespawnVolume
+        )
+
+        -- Remove red effect
+        pcall(function()
+
+            local effect =
+                Lighting:FindFirstChild("RipperColorCorrection")
+
+            if effect then
+                effect:Destroy()
+            end
+
+        end)
+
+    end)
+
+end)
+
+--==================================================
+-- DESPAWNED
+--==================================================
+
+pcall(function()
+
+    Entity:SetCallback("OnDespawned", function(entityModel)
+
+        -- Cleanup only.
+
+    end)
+
+end)
+
+--==================================================
+-- RUN
+--==================================================
+
+local runSuccess, runError = pcall(function()
+
+    Entity:Run()
+
+end)
+
+if not runSuccess then
+
+    warn("[Ripper] Failed to run entity.")
+    warn(runError)
+
+else
+
+    print("======================================")
+    print(" RipperNotMoving")
+    print(" Model: 139732443027976")
+    print(" Damage: 999")
+    print(" Hint: Hide")
+    print(" Cause: Ripper")
+    print(" Map destruction: OFF")
+    print(" Light shatter: OFF")
+    print(" Jumpscare: OFF")
+    print("======================================")
+
+end
