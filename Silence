@@ -1,0 +1,387 @@
+game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
+
+local Spawner = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/eoyoustme/Extremely/refs/heads/main/Ripper%20Spawner"
+))()
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local entity = Spawner:Create({
+
+	Entity = {
+		Name = "silence",
+		Asset = "rbxassetid://11535812658",
+		HeightOffset = 4
+	},
+
+	Lights = {
+		Flicker = {
+			Enabled = false,
+			Duration = 1
+		},
+
+		Shatter = false,
+		Repair = false
+	},
+
+	Earthquake = {
+		Enabled = false
+	},
+
+	CameraShake = {
+		Enabled = true,
+		Range = 100,
+		Values = {30, 57, 0.1, 0.4}
+	},
+
+	Movement = {
+		Speed = 65,
+		Delay = 6.771,
+		Reversed = false
+	},
+
+	Rebounding = {
+		Enabled = false,
+		Type = "Ambush",
+		Min = 1,
+		Max = 1,
+		Delay = 2
+	},
+
+	Damage = {
+		Enabled = true,
+		Range = 100,
+		Amount = 367
+	},
+
+	Crucifixion = {
+		Enabled = true,
+		Range = 40,
+		Resist = false,
+		Break = true
+	},
+
+	Death = {
+		Type = "Guiding",
+
+		Hints = {
+			"Quietness",
+			"dont leave hiding spot",
+			"okay",
+			"bye"
+		},
+
+		Cause = "silence"
+	}
+})
+
+--------------------------------------------------
+-- SPAWN
+--------------------------------------------------
+
+entity:SetCallback("OnSpawned", function()
+	print("Silence has spawned")
+
+	-- Không tạo đèn đỏ
+	-- Không tạo sound
+end)
+
+--------------------------------------------------
+-- START MOVING
+--------------------------------------------------
+
+entity:SetCallback("OnStartMoving", function()
+	print("Silence has started moving")
+end)
+
+--------------------------------------------------
+-- ENTER ROOM
+-- KHÔNG PHÁ MAP
+--------------------------------------------------
+
+entity:SetCallback("OnEnterRoom", function(room: Model, firstTime: boolean)
+	print("Silence entered room:", room.Name)
+
+	-- Không BreakJoints
+	-- Không Anchor/Unanchor
+	-- Không thay Physics
+	-- Không làm đồ vật bay
+end)
+
+--------------------------------------------------
+-- LOOK AT
+--------------------------------------------------
+
+entity:SetCallback("OnLookAt", function(lineOfSight: boolean)
+	if lineOfSight then
+		print("Player is looking at Silence")
+	else
+		print("Player view is obstructed")
+	end
+end)
+
+--------------------------------------------------
+-- REBOUND
+--------------------------------------------------
+
+entity:SetCallback("OnRebounding", function(startOfRebound: boolean)
+	if startOfRebound then
+		print("Silence started rebounding")
+	else
+		print("Silence finished rebounding")
+	end
+end)
+
+--------------------------------------------------
+-- DESPAWNING
+-- KHÔNG SOUND
+--------------------------------------------------
+
+entity:SetCallback("OnDespawning", function()
+	print("Silence is despawning")
+
+	-- Không tạo Roblox Sound
+	-- Không tải static
+	-- Không phát jumpscare sound
+end)
+
+--------------------------------------------------
+-- DESPAWNED
+--------------------------------------------------
+
+entity:SetCallback("OnDespawned", function()
+	print("Silence has despawned")
+end)
+
+--------------------------------------------------
+-- DAMAGE PLAYER
+--------------------------------------------------
+
+entity:SetCallback("OnDamagePlayer", function(newHealth)
+
+	print("Silence damaged the player")
+
+	local player = Players.LocalPlayer
+
+	if not player then
+		return
+	end
+
+	local character = player.Character
+		or player.CharacterAdded:Wait()
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+	local hrp = character:FindFirstChild(
+		"HumanoidRootPart"
+	)
+
+	if not humanoid or not hrp then
+		return
+	end
+
+	--------------------------------------------------
+	-- TÌM ENTITY
+	--------------------------------------------------
+
+	local entityModel =
+		Workspace:FindFirstChild("RipperNotMoving")
+
+	if not entityModel then
+		entityModel =
+			Workspace:FindFirstChild("silence")
+	end
+
+	if not entityModel then
+		warn("Silence model not found")
+		humanoid:TakeDamage(367)
+		return
+	end
+
+	--------------------------------------------------
+	-- TÌM RIPE
+	--------------------------------------------------
+
+	local primaryPart =
+		entityModel:FindFirstChild("Ripe", true)
+
+	if not primaryPart
+		or not primaryPart:IsA("BasePart") then
+
+		warn("Silence Ripe part not found")
+
+		humanoid:TakeDamage(367)
+		return
+	end
+
+	--------------------------------------------------
+	-- ENTITY BAY ĐẾN PLAYER
+	--------------------------------------------------
+
+	primaryPart.Anchored = true
+
+	local tween = TweenService:Create(
+		primaryPart,
+
+		TweenInfo.new(
+			1,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			CFrame =
+				hrp.CFrame *
+				CFrame.new(0, 4, 0)
+		}
+	)
+
+	tween:Play()
+
+	task.wait(0.7)
+
+	--------------------------------------------------
+	-- NẾU PLAYER ĐANG TRỐN
+	--------------------------------------------------
+
+	if character:GetAttribute("Hiding") then
+		tween:Destroy()
+		return
+	end
+
+	--------------------------------------------------
+	-- DAMAGE
+	--------------------------------------------------
+
+	humanoid:TakeDamage(367)
+
+	--------------------------------------------------
+	-- KHÓA PLAYER
+	--------------------------------------------------
+
+	local originalWalkSpeed =
+		humanoid.WalkSpeed
+
+	local originalJumpPower =
+		humanoid.JumpPower
+
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+
+	--------------------------------------------------
+	-- DISABLE CONTROL
+	--------------------------------------------------
+
+	local controls
+
+	pcall(function()
+		controls = require(
+			player
+				:WaitForChild("PlayerScripts")
+				:WaitForChild("PlayerModule")
+		):GetControls()
+
+		controls:Disable()
+	end)
+
+	--------------------------------------------------
+	-- CAMERA LOOK ENTITY
+	--------------------------------------------------
+
+	local camera =
+		Workspace.CurrentCamera
+
+	local oldCameraType =
+		camera.CameraType
+
+	camera.CameraType =
+		Enum.CameraType.Scriptable
+
+	local running = true
+
+	local connection
+
+	connection = RunService.RenderStepped:Connect(
+		function()
+
+			if not running then
+				return
+			end
+
+			if not primaryPart
+				or not primaryPart.Parent then
+
+				return
+			end
+
+			if not camera then
+				return
+			end
+
+			camera.CFrame =
+				CFrame.lookAt(
+					camera.CFrame.Position,
+					primaryPart.Position
+				)
+		end
+	)
+
+	--------------------------------------------------
+	-- KHÔNG STATIC
+	-- KHÔNG ẢNH JUMPSCARE
+	-- KHÔNG SOUND
+	--------------------------------------------------
+
+	task.wait(0.8)
+
+	--------------------------------------------------
+	-- KẾT THÚC
+	--------------------------------------------------
+
+	running = false
+
+	if connection then
+		connection:Disconnect()
+	end
+
+	if humanoid and humanoid.Parent then
+		humanoid.Health = 0
+	end
+
+	if entityModel
+		and entityModel.Parent then
+
+		entityModel:Destroy()
+	end
+
+	camera.CameraType =
+		Enum.CameraType.Custom
+
+	--------------------------------------------------
+	-- RESTORE
+	--------------------------------------------------
+
+	if humanoid
+		and humanoid.Parent
+		and humanoid.Health > 0 then
+
+		humanoid.WalkSpeed =
+			originalWalkSpeed
+
+		humanoid.JumpPower =
+			originalJumpPower
+
+		if controls then
+			controls:Enable()
+		end
+	end
+end)
+
+--------------------------------------------------
+-- RUN
+--------------------------------------------------
+
+entity:Run(true)
