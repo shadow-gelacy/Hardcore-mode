@@ -1,0 +1,43 @@
+local MUSIC_URL = "https://raw.githubusercontent.com/shadow-gelacy/Hardcore-mode/refs/heads/main/Figure%20engared.mp3"
+local FILE_NAME = "FigureEngared.mp3"
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local LatestRoom = ReplicatedStorage
+    :WaitForChild("GameData")
+    :WaitForChild("LatestRoom")
+
+local assetLoader = getcustomasset or getsynasset
+
+if not isfile(FILE_NAME) then
+    local data = game:HttpGet(MUSIC_URL)
+    writefile(FILE_NAME, data)
+end
+
+-- Chờ cửa 50
+while tonumber(LatestRoom.Value) ~= 50 do
+    LatestRoom.Changed:Wait()
+end
+
+-- Phát nhạc
+local Music = Instance.new("Sound")
+Music.Name = "FigureEngared"
+Music.SoundId = assetLoader(FILE_NAME)
+Music.Volume = 0.5
+Music.Looped = true
+Music.Parent = Workspace
+Music:Play()
+
+print("Figure Engared music started at Door 50.")
+
+-- Chờ sang cửa 51
+repeat
+    LatestRoom.Changed:Wait()
+until tonumber(LatestRoom.Value) >= 51
+
+-- Tắt và xóa nhạc
+Music:Stop()
+Music:Destroy()
+
+print("Door 51 reached - music stopped.")
