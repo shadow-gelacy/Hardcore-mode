@@ -1,0 +1,226 @@
+game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local function light(tim, color0, color1)
+	local info = TweenInfo.new(tim, Enum.EasingStyle.Linear)
+
+	for _, obj in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+		if obj:IsA("Light") then
+			TweenService:Create(obj, info, {
+				Color = color1
+			}):Play()
+		end
+
+		if obj:IsA("MeshPart")
+			and obj.Material == Enum.Material.Neon
+			and obj.Name ~= "Skybox" then
+
+			TweenService:Create(obj, info, {
+				Color = color0
+			}):Play()
+		end
+	end
+end
+
+local spawner = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors/Entity%20Spawner/V2/Source.lua"
+))()
+
+local entity = spawner.Create({
+	Entity = {
+		Name = "Cease",
+		Asset = "rbxassetid://16167836521",
+		HeightOffset = 0
+	},
+
+	Lights = {
+		Flicker = {
+			Enabled = false,
+			Duration = 7
+		},
+		Shatter = false,
+		Repair = false
+	},
+
+	Earthquake = {
+		Enabled = false
+	},
+
+	CameraShake = {
+		Enabled = true,
+		Range = 100,
+		Values = {3, 3, 2, 2}
+	},
+
+	Movement = {
+		Speed = 40,
+		Delay = 0,
+		Reversed = false
+	},
+
+	Rebounding = {
+		Enabled = false
+	},
+
+	Damage = {
+		Enabled = false
+	},
+
+	Crucifixion = {
+		Enabled = true,
+		Range = 40,
+		Resist = false,
+		Break = true
+	},
+
+	Death = {
+		Type = "Guiding",
+		Hints = {
+			"rebember that name cease.",
+			"do not move or you will die."
+		},
+		Cause = "Cease"
+	}
+})
+
+entity:SetCallback("OnSpawned", function()
+	print("Cease has spawned")
+
+	light(
+		2,
+		Color3.fromRGB(127, 249, 255),
+		Color3.fromRGB(0, 45, 185)
+	)
+
+	repeat
+		task.wait()
+	until entity.Model
+
+	local ceaseModel = entity.Model
+	local hitboxRange = 120
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = {ceaseModel}
+
+	local raycastLoop
+
+	raycastLoop = RunService.Heartbeat:Connect(function()
+		if not ceaseModel or not ceaseModel.Parent then
+			if raycastLoop then
+				raycastLoop:Disconnect()
+			end
+			return
+		end
+
+		local origin = ceaseModel:GetPivot().Position
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			local character = player.Character
+
+			if character
+				and character:FindFirstChild("HumanoidRootPart")
+				and character:FindFirstChild("Humanoid") then
+
+				local hrp = character.HumanoidRootPart
+				local humanoid = character.Humanoid
+
+				local offset = hrp.Position - origin
+
+				if offset.Magnitude > 0 then
+					local direction = offset.Unit
+
+					local rayResult = workspace:Raycast(
+						origin,
+						direction * hitboxRange,
+						params
+					)
+
+					if rayResult
+						and rayResult.Instance
+						and rayResult.Instance:IsDescendantOf(character) then
+
+						local isMovingByInput =
+							humanoid.MoveDirection.Magnitude > 0.1
+
+						local isMovingByVelocity =
+							hrp.AssemblyLinearVelocity.Magnitude > 2
+
+						if isMovingByInput
+							and isMovingByVelocity
+							and humanoid.Health > 0 then
+
+							humanoid.Health = 0
+
+							local sound = Instance.new("Sound")
+							sound.SoundId = "rbxassetid://4988621968"
+							sound.Volume = 10
+							sound.PlaybackSpeed = 0.7
+							sound.Parent = workspace
+							sound:Play()
+
+							print(
+								player.Name ..
+								" was killed by Cease for moving!"
+							)
+
+							local statsFolder =
+								game.ReplicatedStorage:FindFirstChild("GameStats")
+
+							if statsFolder then
+								local playerStats =
+									statsFolder:FindFirstChild(
+										"Player_" .. player.Name
+									)
+
+								if playerStats
+									and playerStats:FindFirstChild("Total")
+									and playerStats.Total:FindFirstChild("DeathCause") then
+
+									playerStats.Total.DeathCause.Value = "Cease"
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	entity:SetCallback("OnDespawning", function()
+		print("Cease has disappeared")
+
+		if raycastLoop then
+			raycastLoop:Disconnect()
+			raycastLoop = nil
+		end
+
+		-- Đã xóa đèn hồng ở đây
+
+		local achievementGiver = loadstring(
+			game:HttpGet(
+				"https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors/Custom%20Achievements/Source.lua"
+			)
+		)()
+
+		achievementGiver({
+			Title = "I don't want a Noise",
+			Desc = "dont move",
+			Reason = "Survive Cease",
+			Image = "rbxassetid://118797247277589"
+		})
+	end)
+end)
+
+entity:SetCallback("OnDamagePlayer", function(newHealth)
+	if newHealth == 0 then
+		print("Cease has killed the player")
+	else
+		print("Cease has damaged the player")
+	end
+end)
+
+entity:Run()
