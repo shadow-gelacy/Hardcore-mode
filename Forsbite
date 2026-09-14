@@ -1,0 +1,259 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local GameData = ReplicatedStorage:WaitForChild("GameData")
+local LatestRoom = GameData:WaitForChild("LatestRoom")
+local CurrentRooms = Workspace:WaitForChild("CurrentRooms")
+
+local FROSTBITE_ID = "rbxassetid://16452134189"
+local SECOND_MODEL_ID = "rbxassetid://123649042502289"
+
+local SECOND_MODEL_DELAY = 3
+
+local DAMAGE = 5
+local DAMAGE_DELAY = 5
+local DAMAGE_INTERVAL = 1
+
+local HEIGHT_ABOVE_FLOOR = 2
+local MODEL_SCALE = 2
+
+local LIGHTER_NAMES = {
+	["lighter"] = true,
+	["lightertool"] = true,
+	["lighter tool"] = true,
+	["lighter_tool"] = true,
+}
+
+local function IsLighterOn()
+	local character = player.Character
+
+	if not character then
+		return false
+	end
+
+	for _, tool in ipairs(character:GetChildren()) do
+		if tool:IsA("Tool") then
+			local toolName = string.lower(tool.Name)
+
+			if LIGHTER_NAMES[toolName] then
+				for _, obj in ipairs(tool:GetDescendants()) do
+					if obj:IsA("PointLight")
+						or obj:IsA("SpotLight")
+						or obj:IsA("SurfaceLight") then
+
+						return obj.Enabled
+					end
+				end
+
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function GetCurrentRoom()
+	return CurrentRooms:FindFirstChild(tostring(LatestRoom.Value))
+end
+
+local room = GetCurrentRoom()
+
+if not room then
+	return
+end
+
+local roomChanged = false
+
+local roomConnection = LatestRoom.Changed:Connect(function(newRoom)
+	if tostring(newRoom) ~= tostring(room.Name) then
+		roomChanged = true
+	end
+end)
+
+local childConnection = CurrentRooms.ChildAdded:Connect(function(newRoom)
+	if newRoom ~= room then
+		roomChanged = true
+	end
+end)
+
+local function GetFloor()
+	local parts = room:FindFirstChild("Parts")
+
+	if not parts then
+		return nil
+	end
+
+	local floor = parts:FindFirstChild("Floor")
+
+	if floor and floor:IsA("BasePart") then
+		return floor
+	end
+
+	return nil
+end
+
+local function GetEntityPosition()
+	local floor = GetFloor()
+
+	if floor then
+		local floorTop = floor.Position.Y + (floor.Size.Y / 2)
+
+		return Vector3.new(
+			floor.Position.X,
+			floorTop + HEIGHT_ABOVE_FLOOR,
+			floor.Position.Z
+		)
+	end
+
+	local roomPosition = room:GetPivot().Position
+
+	return Vector3.new(
+		roomPosition.X,
+		roomPosition.Y + HEIGHT_ABOVE_FLOOR,
+		roomPosition.Z
+	)
+end
+
+local function LoadModel(assetId)
+	local success, objects = pcall(function()
+		return game:GetObjects(assetId)
+	end)
+
+	if not success or not objects or #objects == 0 then
+		return nil
+	end
+
+	local model = objects[1]
+
+	if not model then
+		return nil
+	end
+
+	model.Parent = Workspace
+
+	if not model.PrimaryPart then
+		local primary = model:FindFirstChildWhichIsA("BasePart", true)
+
+		if primary then
+			model.PrimaryPart = primary
+		end
+	end
+
+	for _, obj in ipairs(model:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Anchored = true
+			obj.CanCollide = false
+			obj.CanTouch = false
+			obj.CanQuery = false
+			obj.Massless = true
+		end
+
+		if obj:IsA("Script") or obj:IsA("LocalScript") then
+			obj:Destroy()
+		end
+	end
+
+	pcall(function()
+		model:ScaleTo(MODEL_SCALE)
+	end)
+
+	model:PivotTo(
+		CFrame.new(GetEntityPosition())
+	)
+
+	return model
+end
+
+local frostbite = LoadModel(FROSTBITE_ID)
+
+if not frostbite then
+	if roomConnection then
+		roomConnection:Disconnect()
+	end
+
+	if childConnection then
+		childConnection:Disconnect()
+	end
+
+	return
+end
+
+pcall(function()
+	local ambience = frostbite:FindFirstChild("Ambience", true)
+
+	if ambience and ambience:IsA("Sound") then
+		ambience:Play()
+	end
+end)
+
+pcall(function()
+	local ambienceFar = frostbite:FindFirstChild("AmbienceFar", true)
+
+	if ambienceFar and ambienceFar:IsA("Sound") then
+		ambienceFar:Play()
+	end
+end)
+
+task.spawn(function()
+	task.wait(SECOND_MODEL_DELAY)
+
+	if roomChanged then
+		return
+	end
+
+	if not frostbite or not frostbite.Parent then
+		return
+	end
+
+	local secondModel = LoadModel(SECOND_MODEL_ID)
+
+	if secondModel then
+		task.wait(0.05)
+
+		if frostbite and frostbite.Parent then
+			frostbite:Destroy()
+		end
+	end
+end)
+
+task.wait(DAMAGE_DELAY)
+
+while not roomChanged do
+	local character = player.Character
+	local humanoid = character
+		and character:FindFirstChildOfClass("Humanoid")
+
+	if humanoid and humanoid.Health > 0 then
+		if not IsLighterOn() then
+			humanoid.Health = math.max(
+				0,
+				humanoid.Health - DAMAGE
+			)
+		end
+	end
+
+	task.wait(DAMAGE_INTERVAL)
+end
+
+if roomConnection then
+	roomConnection:Disconnect()
+	roomConnection = nil
+end
+
+if childConnection then
+	childConnection:Disconnect()
+	childConnection = nil
+end
+
+if frostbite and frostbite.Parent then
+	frostbite:Destroy()
+end
+
+for _, obj in ipairs(Workspace:GetChildren()) do
+	if obj:IsA("Model") and obj.Name ~= player.Name then
+		-- Không xoá model khác trong Workspace.
+	end
+end
