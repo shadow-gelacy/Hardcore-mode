@@ -57,7 +57,7 @@ local entity = Spawner:Create({
 	Entity = {
 		Name = "Silence",
 		Asset = "rbxassetid://11535812658",
-		HeightOffset = 4
+		HeightOffset = 2
 	},
 
 	Movement = {
@@ -78,8 +78,8 @@ local entity = Spawner:Create({
 			Enabled = false,
 			Duration = 1
 		},
-		Shatter = false,
-		Repair = true
+		Shatter = true,
+		Repair = false
 	},
 
 	Earthquake = {
