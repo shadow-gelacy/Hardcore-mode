@@ -1,473 +1,226 @@
+game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
+
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
-local GameData = ReplicatedStorage:WaitForChild("GameData")
-local LatestRoom = GameData:WaitForChild("LatestRoom")
-local CurrentRooms = Workspace:WaitForChild("CurrentRooms")
+local function light(tim, color0, color1)
+	local info = TweenInfo.new(tim, Enum.EasingStyle.Linear)
 
-local FROSTBITE_ID = "rbxassetid://16452134189"
-local SECOND_MODEL_ID = "rbxassetid://123649042502289"
+	for _, obj in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+		if obj:IsA("Light") then
+			TweenService:Create(obj, info, {
+				Color = color1
+			}):Play()
+		end
 
-local SECOND_MODEL_DELAY = 3
+		if obj:IsA("MeshPart")
+			and obj.Material == Enum.Material.Neon
+			and obj.Name ~= "Skybox" then
 
-local DAMAGE = 5
-local DAMAGE_DELAY = 5
-local DAMAGE_INTERVAL = 1
-
-local HEIGHT_ABOVE_FLOOR = 4
-local MODEL_SCALE = 1.3
-
-local Crucifixion = {
-	Enabled = true,
-	Range = 40,
-	Resist = false,
-	Break = true
-}
-
-local LIGHTER_NAMES = {
-	["lighter"] = true,
-	["lightertool"] = true,
-	["lighter tool"] = true,
-	["lighter_tool"] = true,
-}
-
-local room = CurrentRooms:FindFirstChild(tostring(LatestRoom.Value))
-
-if not room then
-	return
+			TweenService:Create(obj, info, {
+				Color = color0
+			}):Play()
+		end
+	end
 end
 
-local roomChanged = false
-local frostbite
-local secondModel
-local crucified = false
+local spawner = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors/Entity%20Spawner/V2/Source.lua"
+))()
 
-local function IsLighterOn()
-	local character = player.Character
+local entity = spawner.Create({
+	Entity = {
+		Name = "Cease",
+		Asset = "rbxassetid://16167836521",
+		HeightOffset = 0
+	},
 
-	if not character then
-		return false
-	end
+	Lights = {
+		Flicker = {
+			Enabled = false,
+			Duration = 7
+		},
+		Shatter = false,
+		Repair = false
+	},
 
-	for _, tool in ipairs(character:GetChildren()) do
-		if tool:IsA("Tool") then
-			local toolName = string.lower(tool.Name)
+	Earthquake = {
+		Enabled = false
+	},
 
-			if LIGHTER_NAMES[toolName] then
-				for _, obj in ipairs(tool:GetDescendants()) do
-					if obj:IsA("PointLight")
-						or obj:IsA("SpotLight")
-						or obj:IsA("SurfaceLight") then
+	CameraShake = {
+		Enabled = true,
+		Range = 100,
+		Values = {3, 3, 2, 2}
+	},
 
-						return obj.Enabled
+	Movement = {
+		Speed = 40,
+		Delay = 0,
+		Reversed = false
+	},
+
+	Rebounding = {
+		Enabled = false
+	},
+
+	Damage = {
+		Enabled = false
+	},
+
+	Crucifixion = {
+		Enabled = true,
+		Range = 40,
+		Resist = false,
+		Break = true
+	},
+
+	Death = {
+		Type = "Guiding",
+		Hints = {
+			"You were killed by Cease.",
+			"When Cease appears, do not move or you will die."
+		},
+		Cause = "Cease"
+	}
+})
+
+entity:SetCallback("OnSpawned", function()
+	print("Cease has spawned")
+
+	light(
+		2,
+		Color3.fromRGB(127, 249, 255),
+		Color3.fromRGB(0, 45, 185)
+	)
+
+	repeat
+		task.wait()
+	until entity.Model
+
+	local ceaseModel = entity.Model
+	local hitboxRange = 120
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = {ceaseModel}
+
+	local raycastLoop
+
+	raycastLoop = RunService.Heartbeat:Connect(function()
+		if not ceaseModel or not ceaseModel.Parent then
+			if raycastLoop then
+				raycastLoop:Disconnect()
+			end
+			return
+		end
+
+		local origin = ceaseModel:GetPivot().Position
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			local character = player.Character
+
+			if character
+				and character:FindFirstChild("HumanoidRootPart")
+				and character:FindFirstChild("Humanoid") then
+
+				local hrp = character.HumanoidRootPart
+				local humanoid = character.Humanoid
+
+				local offset = hrp.Position - origin
+
+				if offset.Magnitude > 0 then
+					local direction = offset.Unit
+
+					local rayResult = workspace:Raycast(
+						origin,
+						direction * hitboxRange,
+						params
+					)
+
+					if rayResult
+						and rayResult.Instance
+						and rayResult.Instance:IsDescendantOf(character) then
+
+						local isMovingByInput =
+							humanoid.MoveDirection.Magnitude > 0.1
+
+						local isMovingByVelocity =
+							hrp.AssemblyLinearVelocity.Magnitude > 2
+
+						if isMovingByInput
+							and isMovingByVelocity
+							and humanoid.Health > 0 then
+
+							humanoid.Health = 0
+
+							local sound = Instance.new("Sound")
+							sound.SoundId = "rbxassetid://4988621968"
+							sound.Volume = 10
+							sound.PlaybackSpeed = 0.7
+							sound.Parent = workspace
+							sound:Play()
+
+							print(
+								player.Name ..
+								" was killed by Cease for moving!"
+							)
+
+							local statsFolder =
+								game.ReplicatedStorage:FindFirstChild("GameStats")
+
+							if statsFolder then
+								local playerStats =
+									statsFolder:FindFirstChild(
+										"Player_" .. player.Name
+									)
+
+								if playerStats
+									and playerStats:FindFirstChild("Total")
+									and playerStats.Total:FindFirstChild("DeathCause") then
+
+									playerStats.Total.DeathCause.Value = "Cease"
+								end
+							end
+						end
 					end
 				end
-
-				return true
 			end
-		end
-	end
-
-	return false
-end
-
-local function GetFloor()
-	local parts = room:FindFirstChild("Parts")
-
-	if not parts then
-		return nil
-	end
-
-	local floor = parts:FindFirstChild("Floor")
-
-	if floor and floor:IsA("BasePart") then
-		return floor
-	end
-
-	return nil
-end
-
-local function GetEntityPosition()
-	local floor = GetFloor()
-
-	if floor then
-		local floorTop = floor.Position.Y + floor.Size.Y / 2
-
-		return Vector3.new(
-			floor.Position.X,
-			floorTop + HEIGHT_ABOVE_FLOOR,
-			floor.Position.Z
-		)
-	end
-
-	local roomPosition = room:GetPivot().Position
-
-	return Vector3.new(
-		roomPosition.X,
-		roomPosition.Y + HEIGHT_ABOVE_FLOOR,
-		roomPosition.Z
-	)
-end
-
-local function SetupModel(model)
-	if not model then
-		return
-	end
-
-	if not model.PrimaryPart then
-		local primary = model:FindFirstChildWhichIsA(
-			"BasePart",
-			true
-		)
-
-		if primary then
-			model.PrimaryPart = primary
-		end
-	end
-
-	for _, obj in ipairs(model:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			obj.Anchored = true
-			obj.CanCollide = false
-			obj.CanTouch = false
-			obj.CanQuery = false
-			obj.Massless = true
-		end
-
-		if obj:IsA("Script")
-			or obj:IsA("LocalScript") then
-			obj:Destroy()
-		end
-	end
-
-	pcall(function()
-		model:ScaleTo(MODEL_SCALE)
-	end)
-
-	model:PivotTo(
-		CFrame.new(GetEntityPosition())
-	)
-end
-
-local function LoadModel(assetId)
-	local success, objects = pcall(function()
-		return game:GetObjects(assetId)
-	end)
-
-	if not success
-		or not objects
-		or #objects == 0 then
-		return nil
-	end
-
-	local model = objects[1]
-
-	if not model then
-		return nil
-	end
-
-	model.Parent = Workspace
-
-	SetupModel(model)
-
-	return model
-end
-
-local function GetEntityPositionFromModel(model)
-	if not model or not model.Parent then
-		return nil
-	end
-
-	local success, pivot = pcall(function()
-		return model:GetPivot()
-	end)
-
-	if success and pivot then
-		return pivot.Position
-	end
-
-	return nil
-end
-
-local function IsCrucifixTool(tool)
-	if not tool or not tool:IsA("Tool") then
-		return false
-	end
-
-	local name = string.lower(tool.Name)
-
-	return name == "crucifix"
-		or name == "crucifix tool"
-		or name == "crucifixtool"
-end
-
-local function GetCrucifix()
-	local character = player.Character
-
-	if character then
-		for _, obj in ipairs(character:GetChildren()) do
-			if IsCrucifixTool(obj) then
-				return obj
-			end
-		end
-	end
-
-	local backpack = player:FindFirstChildOfClass("Backpack")
-
-	if backpack then
-		for _, obj in ipairs(backpack:GetChildren()) do
-			if IsCrucifixTool(obj) then
-				return obj
-			end
-		end
-	end
-
-	return nil
-end
-
-local function GetCrucifixPosition(tool)
-	if not tool then
-		return nil
-	end
-
-	local handle = tool:FindFirstChild("Handle")
-
-	if handle and handle:IsA("BasePart") then
-		return handle.Position
-	end
-
-	local character = player.Character
-
-	if character then
-		local root = character:FindFirstChild("HumanoidRootPart")
-
-		if root then
-			return root.Position
-		end
-	end
-
-	return nil
-end
-
-local function IsWithinCrucifixRange(model, tool)
-	if not Crucifixion.Enabled then
-		return false
-	end
-
-	if not model or not model.Parent then
-		return false
-	end
-
-	local entityPosition = GetEntityPositionFromModel(model)
-	local crucifixPosition = GetCrucifixPosition(tool)
-
-	if not entityPosition or not crucifixPosition then
-		return false
-	end
-
-	return (entityPosition - crucifixPosition).Magnitude
-		<= Crucifixion.Range
-end
-
-local function PlayCrucifixEffects(model)
-	if not model then
-		return
-	end
-
-	for _, obj in ipairs(model:GetDescendants()) do
-		if obj:IsA("Sound") then
-			pcall(function()
-				obj:Stop()
-			end)
-		end
-	end
-
-	local highlight = Instance.new("Highlight")
-	highlight.Name = "CrucifixEffect"
-	highlight.FillTransparency = 0.25
-	highlight.OutlineTransparency = 0
-	highlight.Parent = model
-
-	task.delay(1.5, function()
-		if highlight and highlight.Parent then
-			highlight:Destroy()
-		end
-	end)
-end
-
-local function CrucifyEntity(model)
-	if not Crucifixion.Enabled then
-		return false
-	end
-
-	if crucified then
-		return true
-	end
-
-	if not model or not model.Parent then
-		return false
-	end
-
-	local crucifix = GetCrucifix()
-
-	if not crucifix then
-		return false
-	end
-
-	if not IsWithinCrucifixRange(model, crucifix) then
-		return false
-	end
-
-	if Crucifixion.Resist then
-		return false
-	end
-
-	crucified = true
-
-	PlayCrucifixEffects(model)
-
-	task.delay(1.5, function()
-		if model and model.Parent then
-			model:Destroy()
 		end
 	end)
 
-	if Crucifixion.Break then
-		task.delay(1.5, function()
-			if crucifix and crucifix.Parent then
-				crucifix:Destroy()
-			end
-		end)
-	end
+	entity:SetCallback("OnDespawning", function()
+		print("Cease has disappeared")
 
-	return true
-end
-
-local function Cleanup()
-	roomChanged = true
-
-	if frostbite and frostbite.Parent then
-		frostbite:Destroy()
-		frostbite = nil
-	end
-
-	if secondModel and secondModel.Parent then
-		secondModel:Destroy()
-		secondModel = nil
-	end
-end
-
-local roomConnection = LatestRoom.Changed:Connect(function(newRoom)
-	if tostring(newRoom) ~= tostring(room.Name) then
-		Cleanup()
-	end
-end)
-
-local childConnection = CurrentRooms.ChildAdded:Connect(function(newRoom)
-	if newRoom ~= room then
-		Cleanup()
-	end
-end)
-
-frostbite = LoadModel(FROSTBITE_ID)
-
-if not frostbite then
-	Cleanup()
-
-	if roomConnection then
-		roomConnection:Disconnect()
-	end
-
-	if childConnection then
-		childConnection:Disconnect()
-	end
-
-	return
-end
-
-pcall(function()
-	local ambience = frostbite:FindFirstChild(
-		"Ambience",
-		true
-	)
-
-	if ambience and ambience:IsA("Sound") then
-		ambience:Play()
-	end
-end)
-
-pcall(function()
-	local ambienceFar = frostbite:FindFirstChild(
-		"AmbienceFar",
-		true
-	)
-
-	if ambienceFar and ambienceFar:IsA("Sound") then
-		ambienceFar:Play()
-	end
-end)
-
-task.spawn(function()
-	task.wait(SECOND_MODEL_DELAY)
-
-	if roomChanged or crucified then
-		return
-	end
-
-	secondModel = LoadModel(SECOND_MODEL_ID)
-end)
-
-task.spawn(function()
-	while not roomChanged and not crucified do
-		task.wait(0.1)
-
-		if frostbite and frostbite.Parent then
-			local crucifix = GetCrucifix()
-
-			if crucifix then
-				CrucifyEntity(frostbite)
-			end
+		if raycastLoop then
+			raycastLoop:Disconnect()
+			raycastLoop = nil
 		end
 
-		if secondModel and secondModel.Parent and not crucified then
-			local crucifix = GetCrucifix()
+		-- Đã xóa đèn hồng ở đây
 
-			if crucifix then
-				CrucifyEntity(secondModel)
-			end
-		end
-	end
-end)
-
-task.wait(DAMAGE_DELAY)
-
-while not roomChanged and not crucified do
-	local character = player.Character
-
-	local humanoid =
-		character
-		and character:FindFirstChildOfClass("Humanoid")
-
-	if humanoid and humanoid.Health > 0 then
-		if not IsLighterOn() then
-			humanoid.Health = math.max(
-				0,
-				humanoid.Health - DAMAGE
+		local achievementGiver = loadstring(
+			game:HttpGet(
+				"https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors/Custom%20Achievements/Source.lua"
 			)
-		end
+		)()
+
+		achievementGiver({
+			Title = "I don't want a Noise",
+			Desc = "CeaseStopping",
+			Reason = "Survive Cease",
+			Image = "rbxassetid://104367200417966"
+		})
+	end)
+end)
+
+entity:SetCallback("OnDamagePlayer", function(newHealth)
+	if newHealth == 0 then
+		print("Cease has killed the player")
+	else
+		print("Cease has damaged the player")
 	end
+end)
 
-	task.wait(DAMAGE_INTERVAL)
-end
-
-if roomConnection then
-	roomConnection:Disconnect()
-	roomConnection = nil
-end
-
-if childConnection then
-	childConnection:Disconnect()
-	childConnection = nil
-end
+entity:Run()
