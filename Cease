@@ -207,10 +207,10 @@ entity:SetCallback("OnSpawned", function()
 		)()
 
 		achievementGiver({
-			Title = "I don't want a Noise",
-			Desc = "CeaseStopping",
+			Title = "dont move!",
+			Desc = "stay here ",
 			Reason = "Survive Cease",
-			Image = "rbxassetid://104367200417966"
+			Image = "rbxassetid://80482249300469"
 		})
 	end)
 end)
