@@ -1,15 +1,8 @@
---==================================================
--- A-60 MULTI MONSTER
--- Model ID: 113335939452088
--- Spawn music removed
---==================================================
-
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 
 local Player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -23,10 +16,8 @@ local Spawner = loadstring(game:HttpGet(
 ))()
 
 --==================================================
--- LOAD NEW MODEL
+-- LOAD MODEL
 --==================================================
-
-local ModelObjects
 
 local Success, Result = pcall(function()
 	return game:GetObjects("rbxassetid://113335939452088")
@@ -37,11 +28,9 @@ if not Success or not Result or #Result == 0 then
 	return
 end
 
-ModelObjects = Result
-
 local A60Template
 
-for _, Object in ipairs(ModelObjects) do
+for _, Object in ipairs(Result) do
 	if Object:IsA("Model") then
 		A60Template = Object
 		break
@@ -63,10 +52,7 @@ local Entity = Spawner.Create({
 
 	Entity = {
 		Name = "A60",
-
-		-- Use loaded model instead of URL
 		Asset = A60Template,
-
 		HeightOffset = 1
 	},
 
@@ -76,8 +62,8 @@ local Entity = Spawner.Create({
 			Duration = 1
 		},
 
-		Shatter = true,
-		Repair = false
+		Shatter = false,
+		Repair = true
 	},
 
 	Earthquake = {
@@ -87,6 +73,7 @@ local Entity = Spawner.Create({
 	CameraShake = {
 		Enabled = true,
 		Range = 100,
+
 		Values = {
 			20,
 			30,
@@ -106,13 +93,13 @@ local Entity = Spawner.Create({
 		Type = "Ambush",
 		Min = 4,
 		Max = 5,
-		Delay = 0
+		Delay = 1
 	},
 
 	Damage = {
 		Enabled = true,
-		Range = 100,
-		Amount = 0.01
+		Range = 1000,
+		Amount = 500
 	},
 
 	Crucifixion = {
@@ -128,8 +115,8 @@ local Entity = Spawner.Create({
 		Hints = {
 			"hummmm",
 			"your die too",
-			"noob LOL 🥰",
-			">w< kawai "
+			"noob LOL",
+			">w< kawai"
 		},
 
 		Cause = "multimonster"
@@ -159,8 +146,7 @@ local function CameraShake(
 		return
 	end
 
-	local CurrentCamera =
-		Workspace.CurrentCamera
+	local CurrentCamera = Workspace.CurrentCamera
 
 	local Shake = Module.new(
 		Enum.RenderPriority.Camera.Value,
@@ -189,14 +175,10 @@ end
 
 local function GetA60()
 
-	local A60 =
-		Workspace:FindFirstChild("A60")
+	local A60 = Workspace:FindFirstChild("A60")
 
 	if not A60 then
-		A60 = Workspace:WaitForChild(
-			"A60",
-			10
-		)
+		A60 = Workspace:WaitForChild("A60", 10)
 	end
 
 	return A60
@@ -210,56 +192,11 @@ Entity:SetCallback(
 	"OnSpawned",
 	function()
 
-		-- No spawn music here.
+		-- No red lighting.
+		-- No ColorCorrection changes.
 
 		--==================================================
-		-- LIGHTING
-		--==================================================
-
-		local CC =
-			Lighting:FindFirstChild(
-				"MainColorCorrection"
-			)
-
-		if CC then
-
-			CC.TintColor =
-				Color3.fromRGB(
-					118,
-					0,
-					0
-				)
-
-			CC.Contrast = 0.2
-
-			TweenService:Create(
-				CC,
-
-				TweenInfo.new(2.5),
-
-				{
-					Contrast = 0
-				}
-			):Play()
-
-			TweenService:Create(
-				CC,
-
-				TweenInfo.new(20),
-
-				{
-					TintColor =
-						Color3.fromRGB(
-							255,
-							255,
-							255
-						)
-				}
-			):Play()
-		end
-
-		--==================================================
-		-- SHAKE
+		-- CAMERA SHAKE
 		--==================================================
 
 		CameraShake(
@@ -316,14 +253,9 @@ Entity:SetCallback(
 				true
 			)
 
-		if not RushNew then
-			warn(
-				"RushNew not found inside A60."
-			)
-			return
-		end
+		if RushNew
+			and RushNew:IsA("BasePart") then
 
-		if RushNew:IsA("BasePart") then
 			RushNew.CanCollide = false
 		end
 
@@ -340,19 +272,12 @@ Entity:SetCallback(
 		local Running = true
 
 		local Textures = {
-
 			"rbxassetid://79456435735915",
-
 			"rbxassetid://82727826738371",
-
 			"rbxassetid://114398760531594",
-
 			"rbxassetid://109665802074437",
-
 			"rbxassetid://110910840590527",
-
 			"rbxassetid://71917470287498",
-
 			"rbxassetid://110105532069108"
 		}
 
@@ -360,8 +285,7 @@ Entity:SetCallback(
 
 			task.spawn(function()
 
-				while Running
-					and Face.Parent do
+				while Running and Face.Parent do
 
 					for _, Texture in ipairs(Textures) do
 
@@ -370,8 +294,7 @@ Entity:SetCallback(
 						end
 
 						if Face.Parent then
-							Face.Texture =
-								Texture
+							Face.Texture = Texture
 						end
 
 						task.wait(0.1)
@@ -411,111 +334,33 @@ Entity:SetCallback(
 						))()
 
 					AchievementGiver({
-						Title =
-							"The Multi-Faces",
 
-						Desc =
-							"That is luck not skill LOSER...",
+						Title = "The Multi-Faces",
+
+						Desc = "woah...",
 
 						Reason =
 							"Survive A-60 (Multimonster)",
 
 						Image =
-							"rbxassetid://100946605902758"
+							"rbxassetid://138429651291676"
 					})
-
 				end)
 
 				--==================================================
-				-- LIGHTING
+				-- NO RED LIGHTING
 				--==================================================
 
-				local CC =
-					Lighting:FindFirstChild(
-						"MainColorCorrection"
-					)
-
-				if CC then
-
-					local Tints = {
-
-						{
-							Color =
-								Color3.fromRGB(
-									30,
-									30,
-									30
-								),
-
-							Time = 0.5
-						},
-
-						{
-							Color =
-								Color3.fromRGB(
-									60,
-									60,
-									60
-								),
-
-							Time = 0.5
-						},
-
-						{
-							Color =
-								Color3.fromRGB(
-									120,
-									120,
-									120
-								),
-
-							Time = 1.2
-						},
-
-						{
-							Color =
-								Color3.fromRGB(
-									255,
-									255,
-									255
-								),
-
-							Time = 1.2
-						}
-					}
-
-					for _, Data in ipairs(Tints) do
-
-						local Tween =
-							TweenService:Create(
-								CC,
-
-								TweenInfo.new(
-									Data.Time
-								),
-
-								{
-									TintColor =
-										Data.Color
-								}
-							)
-
-						Tween:Play()
-
-						task.wait(
-							Data.Time
-						)
-					end
-				end
+				-- Intentionally empty.
+				-- No ColorCorrection.
+				-- No red flash.
+				-- No screen tint.
 
 				--==================================================
 				-- B60 20%
 				--==================================================
 
-				if math.random(
-					1,
-					100
-				) <= 20 then
+				if math.random(1, 100) <= 20 then
 
 					pcall(function()
 
@@ -545,50 +390,12 @@ Entity:SetCallback(
 		task.spawn(function()
 
 			--==================================================
-			-- LIGHTING
+			-- NO RED LIGHTING
 			--==================================================
 
-			local CC =
-				Lighting:FindFirstChild(
-					"MainColorCorrection"
-				)
-
-			if CC then
-
-				CC.TintColor =
-					Color3.fromRGB(
-						255,
-						0,
-						0
-					)
-
-				CC.Contrast = 1
-
-				TweenService:Create(
-					CC,
-
-					TweenInfo.new(2.5),
-
-					{
-						Contrast = 0
-					}
-				):Play()
-
-				TweenService:Create(
-					CC,
-
-					TweenInfo.new(20),
-
-					{
-						TintColor =
-							Color3.fromRGB(
-								255,
-								255,
-								255
-							)
-					}
-				):Play()
-			end
+			-- Removed completely.
+			-- No red ColorCorrection.
+			-- No contrast flash.
 
 			--==================================================
 			-- CHARACTER
@@ -662,22 +469,17 @@ Entity:SetCallback(
 				"rbxassetid://103959751518518"
 
 			Sound.Volume = 5
-
-			Sound.Parent =
-				Workspace
-
+			Sound.Parent = Workspace
 			Sound:Play()
 
 			--==================================================
 			-- MOVE A60
 			--==================================================
 
-			PrimaryPart.Anchored =
-				true
+			PrimaryPart.Anchored = true
 
 			pcall(function()
-				A60.PrimaryPart =
-					PrimaryPart
+				A60.PrimaryPart = PrimaryPart
 			end)
 
 			local TargetPosition =
@@ -701,7 +503,6 @@ Entity:SetCallback(
 				)
 
 			MoveTween:Play()
-
 			MoveTween.Completed:Wait()
 
 			--==================================================
@@ -726,7 +527,6 @@ Entity:SetCallback(
 							return
 						end
 
-						-- Player hides
 						if Character:GetAttribute(
 							"Hiding"
 						) then
@@ -734,9 +534,7 @@ Entity:SetCallback(
 							if CameraConnection then
 
 								CameraConnection:Disconnect()
-
-								CameraConnection =
-									nil
+								CameraConnection = nil
 							end
 
 							for _, SavedSound in ipairs(
@@ -750,11 +548,8 @@ Entity:SetCallback(
 								end
 							end
 
-							PrimaryPart.Anchored =
-								false
-
-							Humanoid.PlatformStand =
-								false
+							PrimaryPart.Anchored = false
+							Humanoid.PlatformStand = false
 
 							return
 						end
@@ -764,6 +559,7 @@ Entity:SetCallback(
 
 							if CameraConnection then
 								CameraConnection:Disconnect()
+								CameraConnection = nil
 							end
 
 							return
@@ -800,54 +596,30 @@ Entity:SetCallback(
 			end
 
 			local Images = {
-
-				"82727826738371",
-
-				"114398760531594",
-
-				"109665802074437",
-
-				"110910840590527",
-
-				"71917470287498",
-
-				"110105532069108",
-
-				"79456435735915"
+				"18801391735",
+				"119227604541887",
+				"18801488141",
+				"16501050923",
+				"17019901366",
+				"14472562848",
+				"111160375045680"
 			}
 
 			local Gui =
 				Instance.new("ScreenGui")
 
-			Gui.Name =
-				"A60Jumpscare"
-
-			Gui.IgnoreGuiInset =
-				true
-
-			Gui.ResetOnSpawn =
-				false
-
-			Gui.DisplayOrder =
-				999999
-
-			Gui.Parent =
-				Player.PlayerGui
+			Gui.Name = "A60Jumpscare"
+			Gui.IgnoreGuiInset = true
+			Gui.ResetOnSpawn = false
+			Gui.DisplayOrder = 999999
+			Gui.Parent = Player.PlayerGui
 
 			local Image =
 				Instance.new("ImageLabel")
 
-			Image.Parent =
-				Gui
-
-			Image.BackgroundTransparency =
-				1
-
-			Image.AnchorPoint =
-				Vector2.new(
-					0.5,
-					0.5
-				)
+			Image.Parent = Gui
+			Image.BackgroundTransparency = 1
+			Image.AnchorPoint = Vector2.new(0.5, 0.5)
 
 			Image.Position =
 				UDim2.new(
@@ -865,8 +637,7 @@ Entity:SetCallback(
 					50
 				)
 
-			Image.ImageTransparency =
-				1
+			Image.ImageTransparency = 1
 
 			Image.ImageColor3 =
 				Color3.fromRGB(
@@ -919,7 +690,6 @@ Entity:SetCallback(
 				)
 
 			Tween:Play()
-
 			Tween.Completed:Wait()
 
 			--==================================================
@@ -929,41 +699,31 @@ Entity:SetCallback(
 			if CameraConnection then
 
 				CameraConnection:Disconnect()
-
-				CameraConnection =
-					nil
+				CameraConnection = nil
 			end
 
-			if A60
-				and A60.Parent then
-
+			if A60 and A60.Parent then
 				A60:Destroy()
 			end
 
 			pcall(function()
-
 				Humanoid.Health = 0
-
 			end)
 
 			pcall(function()
 
 				local Stats =
 					ReplicatedStorage.GameStats[
-						"Player_"
-						.. Player.Name
+						"Player_" .. Player.Name
 					]
 
 				Stats.Total.DeathCause.Value =
 					"Multi Monster"
-
 			end)
 
 			task.wait(2)
 
-			if Gui
-				and Gui.Parent then
-
+			if Gui and Gui.Parent then
 				Gui:Destroy()
 			end
 
@@ -980,223 +740,17 @@ Entity:SetCallback(
 
 				AchievementGiver({
 
-					Title =
-						"Death By Multi-Png",
+					Title = "rooms?",
 
-					Desc =
-						"That's obvious.",
+					Desc = "that great",
 
-					Reason =
-						"Death by A-60",
+					Reason = "Death by A-60",
 
 					Image =
-						"rbxassetid://132714224363069"
+						"rbxassetid://119763403416005"
 				})
-
 			end)
 		end)
-	end
-)
-
---==================================================
--- BLACKLIST
---==================================================
-
-local Blacklist = {
-
-	"key",
-	"breaker",
-	"gold",
-	"floor",
-	"wall",
-	"ceiling"
-}
-
-local function IsBlacklisted(Name)
-
-	local LowerName =
-		Name:lower()
-
-	for _, Word in ipairs(
-		Blacklist
-	) do
-
-		if string.find(
-			LowerName,
-			Word,
-			1,
-			true
-		) then
-
-			return true
-		end
-	end
-
-	return false
-end
-
-local function IsInsideBlacklistedModel(
-	Object
-)
-
-	local Current =
-		Object.Parent
-
-	while Current
-		and Current ~= Workspace do
-
-		if Current:IsA("Model")
-			and IsBlacklisted(
-				Current.Name
-			) then
-
-			return true
-		end
-
-		Current =
-			Current.Parent
-	end
-
-	return false
-end
-
---==================================================
--- ENTER ROOM
---==================================================
-
-Entity:SetCallback(
-	"OnEnterRoom",
-	function(
-		Room: Model,
-		FirstTime: boolean
-	)
-
-		for _, Object in ipairs(
-			Room:GetDescendants()
-		) do
-
-			if Object:IsA("BasePart") then
-
-				-- Protect player models
-				local Model =
-					Object:FindFirstAncestorOfClass(
-						"Model"
-					)
-
-				if Model
-					and Model:FindFirstChildOfClass(
-						"Humanoid"
-					) then
-
-					continue
-				end
-
-				--==================================================
-				-- PROTECT DOORS
-				--==================================================
-
-				local IsDoor =
-					false
-
-				if string.find(
-					Object.Name:lower(),
-					"door",
-					1,
-					true
-				) then
-
-					IsDoor =
-						true
-
-				elseif Object.Parent
-					and string.find(
-						Object.Parent.Name:lower(),
-						"door",
-						1,
-						true
-					) then
-
-					IsDoor =
-						true
-				end
-
-				if IsDoor then
-					continue
-				end
-
-				--==================================================
-				-- BLACKLIST
-				--==================================================
-
-				if IsBlacklisted(
-					Object.Name
-				) then
-
-					continue
-				end
-
-				if IsInsideBlacklistedModel(
-					Object
-				) then
-
-					continue
-				end
-
-				--==================================================
-				-- PHYSICS
-				--==================================================
-
-				Object.Anchored =
-					true
-
-				task.wait()
-
-				Object.Anchored =
-					false
-
-				Object.Massless =
-					true
-
-				Object.CanCollide =
-					false
-
-				Object.CanQuery =
-					false
-
-				Object.AssemblyLinearVelocity =
-					Vector3.new(
-						math.random(
-							-150,
-							150
-						),
-
-						50,
-
-						math.random(
-							-180,
-							180
-						)
-					)
-
-				Object.AssemblyAngularVelocity =
-					Vector3.new(
-						math.random(
-							-25,
-							25
-						),
-
-						math.random(
-							-25,
-							25
-						),
-
-						math.random(
-							-25,
-							25
-						)
-					)
-			end
-		end
 	end
 )
 
