@@ -44,16 +44,33 @@ local function setCharacter(character)
 	isSprinting = false
 	exhaustedEffectRunning = false
 
-	Hum:SetAttribute("SpeedBoost", 0)
+	pcall(function()
+		Hum:SetAttribute("SpeedBoost", 0)
+	end)
+
 	Hum.WalkSpeed = NORMAL_SPEED
 end
 
 Plr.CharacterAdded:Connect(setCharacter)
 
+-- Remove old GUIs
+
 local oldGui = Parent:FindFirstChild("StaminaGui")
 if oldGui then
 	oldGui:Destroy()
 end
+
+local oldEffect = Parent:FindFirstChild("erm")
+if oldEffect then
+	oldEffect:Destroy()
+end
+
+local oldControls = Parent:FindFirstChild("MobileSprint")
+if oldControls then
+	oldControls:Destroy()
+end
+
+-- Stamina GUI
 
 local StaminaGui = Instance.new("ScreenGui")
 StaminaGui.Name = "StaminaGui"
@@ -66,6 +83,7 @@ local Sprint = Instance.new("Frame")
 Sprint.Name = "Sprint"
 Sprint.Parent = StaminaGui
 Sprint.AnchorPoint = Vector2.new(0, 1)
+
 Sprint.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Sprint.BackgroundTransparency = 1
 
@@ -87,6 +105,7 @@ Sprint.SizeConstraint = Enum.SizeConstraint.RelativeYY
 Sprint.ZIndex = 1005
 
 local HiddenImage = Instance.new("ImageLabel")
+HiddenImage.Name = "HiddenImage"
 HiddenImage.Parent = Sprint
 HiddenImage.BackgroundColor3 = Color3.fromRGB(255, 222, 189)
 HiddenImage.Size = UDim2.new(1, 0, 1, 0)
@@ -99,10 +118,10 @@ HiddenCorner.Parent = HiddenImage
 
 local UIPadding = Instance.new("UIPadding")
 UIPadding.Parent = Sprint
-UIPadding.PaddingBottom = UDim.new(0.300000012, -5)
-UIPadding.PaddingLeft = UDim.new(0.0199999996, 0)
-UIPadding.PaddingRight = UDim.new(0.0500000007, -15)
-UIPadding.PaddingTop = UDim.new(0.300000012, -5)
+UIPadding.PaddingBottom = UDim.new(0.3, -5)
+UIPadding.PaddingLeft = UDim.new(0.02, 0)
+UIPadding.PaddingRight = UDim.new(0.05, -15)
+UIPadding.PaddingTop = UDim.new(0.3, -5)
 
 local Bar = Instance.new("Frame")
 Bar.Name = "Bar"
@@ -113,16 +132,16 @@ Bar.BackgroundColor3 = Color3.fromRGB(56, 46, 39)
 Bar.BackgroundTransparency = 0.7
 
 Bar.Position = UDim2.new(
-	-2.72600269,
+	-2.726,
 	0,
-	0.499999672,
+	0.5,
 	0
 )
 
 Bar.Size = UDim2.new(
-	3.60599804,
+	3.606,
 	0,
-	0.600000083,
+	0.6,
 	0
 )
 
@@ -170,10 +189,7 @@ local FillCorner = Instance.new("UICorner")
 FillCorner.CornerRadius = UDim.new(0.25, 0)
 FillCorner.Parent = Fill
 
-local oldEffect = Parent:FindFirstChild("erm")
-if oldEffect then
-	oldEffect:Destroy()
-end
+-- Exhausted effect
 
 local erm = Instance.new("ScreenGui")
 erm.Name = "erm"
@@ -183,7 +199,9 @@ erm.ResetOnSpawn = false
 erm.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local BlackImage = Instance.new("ImageLabel")
+BlackImage.Name = "BlackImage"
 BlackImage.Parent = erm
+
 BlackImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 BlackImage.BackgroundTransparency = 1
 
@@ -198,10 +216,7 @@ BlackImage.Image = "rbxassetid://190596490"
 BlackImage.ImageColor3 = Color3.fromRGB(0, 0, 0)
 BlackImage.ImageTransparency = 1
 
-local oldControls = Parent:FindFirstChild("MobileSprint")
-if oldControls then
-	oldControls:Destroy()
-end
+-- Mobile sprint button
 
 local MobileGui = Instance.new("ScreenGui")
 MobileGui.Name = "MobileSprint"
@@ -220,10 +235,14 @@ MobileButton.AnchorPoint = Vector2.new(
 	0.5
 )
 
+-- Vị trí theo hình:
+-- bên phải màn hình
+-- nằm cao hơn nút Jump
+
 MobileButton.Position = UDim2.new(
-	0.738,
+	0.928,
 	0,
-	0.837,
+	0.65,
 	0
 )
 
@@ -249,7 +268,6 @@ ButtonCorner.CornerRadius = UDim.new(
 	1,
 	0
 )
-
 ButtonCorner.Parent = MobileButton
 
 local ButtonStroke = Instance.new("UIStroke")
@@ -262,6 +280,8 @@ ButtonStroke.Color = Color3.fromRGB(
 ButtonStroke.Thickness = 1
 ButtonStroke.Transparency = 0.35
 ButtonStroke.Parent = MobileButton
+
+-- Stamina bar update
 
 local function updateStaminaBar()
 	local percent = math.clamp(
@@ -278,42 +298,51 @@ local function updateStaminaBar()
 	)
 end
 
+-- Speed
+
 local function updateSpeed()
 	if not Hum or Hum.Health <= 0 then
 		return
 	end
 
+	local speed
+
 	if MainGame then
+
 		if MainGame.chase then
 
 			if MainGame.crouching then
-				Hum.WalkSpeed = CHASE_CROUCH_SPEED
+				speed = CHASE_CROUCH_SPEED
 			else
-				Hum.WalkSpeed = CHASE_SPEED
+				speed = CHASE_SPEED
 			end
 
 		elseif MainGame.crouching then
 
-			Hum.WalkSpeed = CROUCH_SPEED
+			speed = CROUCH_SPEED
 
 		elseif isSprinting then
 
-			Hum.WalkSpeed = SPRINT_SPEED
+			speed = SPRINT_SPEED
 
 		else
 
-			Hum.WalkSpeed = NORMAL_SPEED
+			speed = NORMAL_SPEED
 		end
 
 	else
 
 		if isSprinting then
-			Hum.WalkSpeed = SPRINT_SPEED
+			speed = SPRINT_SPEED
 		else
-			Hum.WalkSpeed = NORMAL_SPEED
+			speed = NORMAL_SPEED
 		end
 	end
+
+	Hum.WalkSpeed = speed
 end
+
+-- WalkSpeed protection
 
 if hookmetamethod and newcclosure then
 
@@ -368,6 +397,8 @@ if hookmetamethod and newcclosure then
 	)
 end
 
+-- Start sprint
+
 local function startSprint()
 
 	if cooldown then
@@ -392,10 +423,12 @@ local function startSprint()
 
 	isSprinting = true
 
-	Hum:SetAttribute(
-		"SpeedBoost",
-		SPEED_BOOST
-	)
+	pcall(function()
+		Hum:SetAttribute(
+			"SpeedBoost",
+			SPEED_BOOST
+		)
+	end)
 
 	updateSpeed()
 
@@ -408,6 +441,8 @@ local function startSprint()
 	):Play()
 end
 
+-- Stop sprint
+
 local function stopSprint()
 
 	if not isSprinting then
@@ -417,10 +452,12 @@ local function stopSprint()
 	isSprinting = false
 
 	if Hum then
-		Hum:SetAttribute(
-			"SpeedBoost",
-			0
-		)
+		pcall(function()
+			Hum:SetAttribute(
+				"SpeedBoost",
+				0
+			)
+		end)
 	end
 
 	updateSpeed()
@@ -433,6 +470,8 @@ local function stopSprint()
 		}
 	):Play()
 end
+
+-- Keyboard Q
 
 UIS.InputBegan:Connect(function(
 	input,
@@ -453,6 +492,8 @@ UIS.InputBegan:Connect(function(
 	end
 end)
 
+-- Mobile button
+
 MobileButton.Activated:Connect(function()
 
 	if cooldown then
@@ -469,6 +510,8 @@ MobileButton.Activated:Connect(function()
 		startSprint()
 	end
 end)
+
+-- Exhaust
 
 local function exhaust()
 
@@ -495,7 +538,7 @@ local function exhaust()
 					"Caption"
 				)
 
-			if Caption then
+			if Caption and Caption.OnClientEvent then
 
 				firesignal(
 					Caption.OnClientEvent,
@@ -548,9 +591,7 @@ local function exhaust()
 	task.spawn(function()
 
 		local recoveryTime = sprintTime
-
-		local stepTime =
-			recoveryTime / staminaMax
+		local stepTime = recoveryTime / staminaMax
 
 		for i = 1, staminaMax do
 
@@ -573,6 +614,8 @@ local function exhaust()
 		exhaustedEffectRunning = false
 	end)
 end
+
+-- Stamina loop
 
 RunService.Heartbeat:Connect(function(deltaTime)
 
@@ -624,6 +667,8 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	updateStaminaBar()
 end)
 
+-- Keep speed updated
+
 task.spawn(function()
 
 	while task.wait(0.1) do
@@ -634,10 +679,14 @@ task.spawn(function()
 	end
 end)
 
-Hum:SetAttribute(
-	"SpeedBoost",
-	0
-)
+-- Initialize
+
+pcall(function()
+	Hum:SetAttribute(
+		"SpeedBoost",
+		0
+	)
+end)
 
 Hum.WalkSpeed = NORMAL_SPEED
 
