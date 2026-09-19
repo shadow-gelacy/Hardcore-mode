@@ -200,7 +200,7 @@ entity:SetCallback("OnDespawning", function()
 		workspace
 	)
 
-	sound.SoundId = "rbxassetid://6657340839"
+	sound.SoundId = "rbxassetid://12971875415"
 	sound.Volume = 10
 	sound.PlaybackSpeed = 1
 	sound:Play()
