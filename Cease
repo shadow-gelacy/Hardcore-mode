@@ -79,8 +79,8 @@ local entity = spawner.Create({
 	Death = {
 		Type = "Guiding",
 		Hints = {
-			"You were killed by Cease.",
-			"When Cease appears, do not move or you will die."
+			"remenber that it cease.",
+			"When Cease appears, do not move."
 		},
 		Cause = "Cease"
 	}
@@ -207,10 +207,10 @@ entity:SetCallback("OnSpawned", function()
 		)()
 
 		achievementGiver({
-			Title = "dont move!",
-			Desc = "stay here ",
+			Title = "stay here",
+			Desc = "dont move",
 			Reason = "Survive Cease",
-			Image = "rbxassetid://80482249300469"
+			Image = "rbxassetid://112905061916683"
 		})
 	end)
 end)
