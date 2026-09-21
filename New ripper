@@ -1,8 +1,202 @@
 game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
 
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+
 local Spawner = loadstring(game:HttpGet(
 	"https://raw.githubusercontent.com/eoyoustme/Extremely/refs/heads/main/Ripper%20Spawner"
 ))()
+
+--==================================================
+-- WH1TLY RED ROOM LIGHT SYSTEM
+--==================================================
+
+local RedLightsActive = false
+local OriginalLightColors = {}
+local OriginalPartColors = {}
+local CurrentRedRoom = nil
+
+local function GetPlayerRoom()
+	local currentRooms = Workspace:FindFirstChild("CurrentRooms")
+
+	if not currentRooms then
+		return nil
+	end
+
+	local character = Player.Character
+
+	if not character then
+		return nil
+	end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+
+	if not hrp then
+		return nil
+	end
+
+	-- First try LatestRoom
+	local gameData = game.ReplicatedStorage:FindFirstChild("GameData")
+	local latestRoom = gameData and gameData:FindFirstChild("LatestRoom")
+
+	if latestRoom then
+		local room = currentRooms:FindFirstChild(
+			tostring(latestRoom.Value)
+		)
+
+		if room then
+			CurrentRedRoom = room
+			return room
+		end
+	end
+
+	-- Fallback: find closest room to player
+	local closestRoom = nil
+	local closestDistance = math.huge
+
+	for _, room in ipairs(currentRooms:GetChildren()) do
+		if room:IsA("Model") then
+			local roomPart =
+				room:FindFirstChild("RoomStart")
+				or room:FindFirstChild("RoomEnd")
+				or room.PrimaryPart
+				or room:FindFirstChildWhichIsA("BasePart")
+
+			if roomPart then
+				local distance =
+					(hrp.Position - roomPart.Position).Magnitude
+
+				if distance < closestDistance then
+					closestDistance = distance
+					closestRoom = room
+				end
+			end
+		end
+	end
+
+	CurrentRedRoom = closestRoom
+
+	return closestRoom
+end
+
+local function MakeRoomRed()
+	if RedLightsActive then
+		return
+	end
+
+	local room = GetPlayerRoom()
+
+	if not room then
+		warn("Tuu: player room not found")
+		return
+	end
+
+	RedLightsActive = true
+	CurrentRedRoom = room
+
+	OriginalLightColors = {}
+	OriginalPartColors = {}
+
+	--==================================================
+	-- REAL LIGHTS
+	--==================================================
+
+	for _, object in ipairs(room:GetDescendants()) do
+
+		if object:IsA("PointLight")
+			or object:IsA("SpotLight")
+			or object:IsA("SurfaceLight") then
+
+			OriginalLightColors[object] = object.Color
+
+			object.Color = Color3.fromRGB(
+				255,
+				0,
+				0
+			)
+		end
+	end
+
+	--==================================================
+	-- LIGHT FIXTURE PARTS
+	--==================================================
+
+	for _, object in ipairs(room:GetDescendants()) do
+
+		if object:IsA("BasePart") then
+
+			local name = object.Name:lower()
+
+			if name:find("light")
+				or name:find("lamp")
+				or name:find("bulb")
+				or name:find("ceiling") then
+
+				OriginalPartColors[object] =
+					object.Color
+
+				object.Color = Color3.fromRGB(
+					255,
+					0,
+					0
+				)
+			end
+		end
+	end
+
+	print("Tuu: room lights turned red")
+end
+
+local function RestoreRoomLights()
+	if not RedLightsActive then
+		return
+	end
+
+	-- Restore actual lights
+	for object, oldColor in pairs(
+		OriginalLightColors
+	) do
+
+		if object
+			and object.Parent
+		then
+			pcall(function()
+				object.Color = oldColor
+			end)
+		end
+	end
+
+	-- Restore fixture parts
+	for object, oldColor in pairs(
+		OriginalPartColors
+	) do
+
+		if object
+			and object.Parent
+		then
+			pcall(function()
+				object.Color = oldColor
+			end)
+		end
+	end
+
+	OriginalLightColors = {}
+	OriginalPartColors = {}
+
+	CurrentRedRoom = nil
+	RedLightsActive = false
+
+	print("Tuu: room lights restored")
+end
+
+--==================================================
+-- ENTITY
+--==================================================
 
 local entity = Spawner:Create({
 	Entity = {
@@ -77,41 +271,11 @@ local entity = Spawner:Create({
 entity:SetCallback("OnSpawned", function()
 	print("Tuu has spawned")
 
-	local Reboundcolor = Instance.new(
-		"ColorCorrectionEffect",
-		game.Lighting
-	)
+	--==================================================
+	-- WH1TLY STYLE RED ROOM LIGHTS
+	--==================================================
 
-	Reboundcolor.Name = "Warn"
-	Reboundcolor.TintColor = Color3.fromRGB(255, 0, 0)
-	Reboundcolor.Saturation = -0.7
-	Reboundcolor.Contrast = 0.2
-
-	game.Debris:AddItem(Reboundcolor, 24)
-
-	game.TweenService:Create(
-		Reboundcolor,
-		TweenInfo.new(15),
-		{
-			TintColor = Color3.fromRGB(255, 255, 255),
-			Saturation = 0,
-			Contrast = 0
-		}
-	):Play()
-
-	local MainCC = game.Lighting:FindFirstChild(
-		"MainColorCorrection"
-	)
-
-	if MainCC then
-		game.TweenService:Create(
-			MainCC,
-			TweenInfo.new(7),
-			{
-				TintColor = Color3.fromRGB(255, 255, 255)
-			}
-		):Play()
-	end
+	MakeRoomRed()
 end)
 
 --==================================================
@@ -171,10 +335,13 @@ end)
 entity:SetCallback("OnDespawning", function()
 	print("Tuu is despawning")
 
+	-- Restore room lights
+	RestoreRoomLights()
+
 	local CameraShaker =
 		require(game.ReplicatedStorage.CameraShaker)
 
-	local camera = workspace.CurrentCamera
+	local camera = Workspace.CurrentCamera
 
 	local camShake = CameraShaker.new(
 		Enum.RenderPriority.Camera.Value,
@@ -197,18 +364,17 @@ entity:SetCallback("OnDespawning", function()
 
 	local sound = Instance.new(
 		"Sound",
-		workspace
+		Workspace
 	)
 
-	sound.SoundId = "rbxassetid://12971875415"
+	sound.SoundId =
+		"rbxassetid://12971875415"
+
 	sound.Volume = 10
 	sound.PlaybackSpeed = 1
 	sound:Play()
 
 	task.wait(0.65)
-
-	local TweenService =
-		game:GetService("TweenService")
 
 	TweenService:Create(
 		sound,
@@ -245,10 +411,12 @@ entity:SetCallback("OnDespawning", function()
 
 	local sound5 = Instance.new(
 		"Sound",
-		workspace
+		Workspace
 	)
 
-	sound5.SoundId = "rbxassetid://1837829565"
+	sound5.SoundId =
+		"rbxassetid://1837829565"
+
 	sound5.Volume = 10
 	sound5.PlaybackSpeed = 1
 	sound5:Play()
@@ -272,8 +440,13 @@ entity:SetCallback("OnDespawning", function()
 
 	task.wait(4)
 
-	sound:Destroy()
-	sound5:Destroy()
+	if sound then
+		sound:Destroy()
+	end
+
+	if sound5 then
+		sound5:Destroy()
+	end
 end)
 
 --==================================================
@@ -282,23 +455,10 @@ end)
 
 entity:SetCallback("OnDespawned", function()
 	print("Tuu has despawned")
+
+	-- Safety restore
+	RestoreRoomLights()
 end)
-
---==================================================
--- SERVICES
---==================================================
-
-local TweenService =
-	game:GetService("TweenService")
-
-local Players =
-	game:GetService("Players")
-
-local Workspace =
-	game:GetService("Workspace")
-
-local RunService =
-	game:GetService("RunService")
 
 --==================================================
 -- DAMAGE PLAYER
@@ -337,7 +497,9 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 	end
 
 	local hrp =
-		character:WaitForChild("HumanoidRootPart")
+		character:WaitForChild(
+			"HumanoidRootPart"
+		)
 
 	part.Anchored = true
 
@@ -350,7 +512,8 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 		),
 		{
 			CFrame =
-				hrp.CFrame * CFrame.new(0, 4, 0)
+				hrp.CFrame *
+				CFrame.new(0, 4, 0)
 		}
 	)
 
@@ -366,7 +529,10 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 	task.spawn(function()
 
 		local humanoid =
-			character:WaitForChild("Humanoid", 5)
+			character:WaitForChild(
+				"Humanoid",
+				5
+			)
 
 		local humanoidRootPart =
 			character:WaitForChild(
@@ -377,14 +543,19 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 			Workspace.CurrentCamera
 
 		local entityModel =
-			Workspace:WaitForChild("Tuu", 5)
+			Workspace:WaitForChild(
+				"Tuu",
+				5
+			)
 
 		if not entityModel then
 			return
 		end
 
 		local primaryPart =
-			entityModel:FindFirstChild("Ripe")
+			entityModel:FindFirstChild(
+				"Ripe"
+			)
 
 		if not (
 			entityModel
@@ -422,11 +593,17 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 			targetModel,
 			timescale
 		)
+
 			for _, descendant in ipairs(
 				targetModel:GetDescendants()
 			) do
-				if descendant:IsA("ParticleEmitter") then
-					descendant.TimeScale = timescale
+
+				if descendant:IsA(
+					"ParticleEmitter"
+				) then
+
+					descendant.TimeScale =
+						timescale
 				end
 			end
 		end
@@ -463,7 +640,8 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 							Enum.EasingStyle.Quad
 						),
 						{
-							CFrame = targetCFrame
+							CFrame =
+								targetCFrame
 						}
 					)
 
@@ -584,12 +762,15 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 			"Kill"
 		)
 
-		Jumpscare.Parent = workspace
+		Jumpscare.Parent = Workspace
 		Jumpscare.Volume = 1
 		Jumpscare.PlaybackSpeed = 1
 
 		local sound =
-			Instance.new("Sound", workspace)
+			Instance.new(
+				"Sound",
+				Workspace
+			)
 
 		sound.SoundId =
 			"rbxassetid://1837829565"
@@ -627,13 +808,16 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 		screenGui.DisplayOrder = 999999
 
 		screenGui.Parent =
-			player:WaitForChild("PlayerGui")
+			player:WaitForChild(
+				"PlayerGui"
+			)
 
 		local imageLabel =
 			Instance.new("ImageLabel")
 
 		imageLabel.BackgroundTransparency = 1
 		imageLabel.BorderSizePixel = 0
+
 		imageLabel.Position =
 			UDim2.new(0, 0, 0, 0)
 
@@ -727,7 +911,7 @@ entity:SetCallback("OnDamagePlayer", function(newHealth)
 
 		deathSound.Volume = 10
 		deathSound.PlaybackSpeed = 0.7
-		deathSound.Parent = workspace
+		deathSound.Parent = Workspace
 		deathSound:Play()
 
 		if entityModel
